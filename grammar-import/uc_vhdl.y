@@ -1,0 +1,2198 @@
+entity_declaration
+	: ENTITY
+	  Identifier
+	  IS
+	  generic_clause_opt
+	  port_clause_opt
+	  entity_declarative_part
+	  BEGIN__entity_statement_part_opt
+	  END_ERR
+	  simple_name_opt
+	  Semicolon_ERR
+	| ENTITY error
+	;
+
+port_clause_opt
+	: 
+	| port_clause
+	;
+
+
+generic_clause_opt
+	: 
+	| generic_clause
+	;
+
+port_clause
+	: PORT
+	  LPAREN
+	  formal_port_list
+	  RightParen_ERR
+	  Semicolon_ERR
+	;
+
+generic_clause
+	: GENERIC
+	  LPAREN
+	  formal_generic_list
+	  RightParen_ERR
+	  Semicolon_ERR
+	;
+
+
+
+
+formal_port_list
+	: formal_port_element
+	  formal_port_elements
+	| error RightParen_ERR
+	;
+
+
+formal_port_elements
+	: 
+	| formal_port_elements
+	  Semicolon_ERR
+	  formal_port_element
+	;
+
+formal_port_element
+	: SIGNAL_opt
+	  identifier_list
+	  Colon
+	  mode_opt
+	  	
+	  type_mark
+	  constraint_opt	
+	  BUS_opt
+	  VarAsgn__expression_opt
+	;
+
+SIGNAL_opt
+	: 
+	| SIGNAL
+	;
+
+mode_opt
+	:
+	| IN
+	| OUT
+	| INOUT
+	| BUFFER
+	| LINKAGE
+	;
+
+BUS_opt
+	: 
+	| BUS
+	;
+
+
+
+VarAsgn__expression_opt
+	: 
+	| VarAsgn
+	  expression
+	;
+
+
+formal_generic_list
+	: formal_generic_element
+	  formal_generic_elements
+	| error RightParen_ERR
+	;
+
+
+formal_generic_elements
+	: 
+	| formal_generic_elements
+	  Semicolon_ERR
+	  formal_generic_element	  
+	;
+
+formal_generic_element
+	: CONSTANT_opt
+	  identifier_list
+	  Colon
+	  IN_opt
+	  
+	  type_mark
+	  constraint_opt
+	  VarAsgn__expression_opt
+	;
+
+
+CONSTANT_opt
+	: 
+	| CONSTANT
+	;
+
+IN_opt
+	: 
+	| IN
+	;
+
+
+entity_declarative_part
+	: entity_declarative_items
+	;
+
+
+entity_declarative_items
+	: 
+	| entity_declarative_items
+	  entity_declarative_item
+	;
+
+
+entity_declarative_item
+	: alias_declaration
+	| constant_declaration
+	| type_declaration
+	| subtype_declaration
+	| attribute_declaration
+	| attribute_specification
+	| subprogram_declaration
+	| subprogram_body
+	| signal_declaration
+	| file_declaration
+	| disconnection_specification
+	| use_clause
+	;
+
+
+
+
+BEGIN__entity_statement_part_opt
+	: 
+	|  BEGIN_
+	  entity_statement_part
+	;
+
+
+entity_statement_part
+	: entity_statements
+	;
+
+entity_statements
+	: 
+	| entity_statements
+	  entity_statement
+	;
+
+
+entity_statement
+	: concurrent_assertion_statement
+	| concurrent_procedure_call
+	| process_statement  
+	;
+
+
+
+
+
+architecture_body
+	: ARCHITECTURE
+	  Identifier
+	  OF
+	  name  
+	  IS
+	  architecture_declarative_part
+	  BEGIN_
+	  architecture_statement_part
+	  END_ERR
+	  simple_name_opt   
+	  Semicolon_ERR
+	| ARCHITECTURE error
+	;
+
+
+
+architecture_declarative_part
+	: block_declarative_items
+	;
+
+block_declarative_items
+	: 
+	| block_declarative_items
+	  block_declarative_item
+	;
+
+block_declarative_item
+	: constant_declaration
+	| signal_declaration
+	| type_declaration
+	| subtype_declaration
+	| attribute_declaration
+	| component_declaration
+	| alias_declaration
+	| attribute_specification
+	| configuration_specification
+  	| subprogram_declaration
+	| subprogram_body
+	| file_declaration
+	| disconnection_specification
+	| use_clause
+	;
+
+
+
+architecture_statement_part
+	: concurrent_statements
+	;
+
+
+
+configuration_declaration
+	: CONFIGURATION
+	  Identifier
+	  OF
+	  name  
+	  IS
+	  configuration_declarative_part
+	  block_configuration
+	  END_ERR
+	  simple_name_opt
+	  Semicolon_ERR
+	| CONFIGURATION error
+	;
+
+configuration_declarative_part
+	: configuration_declarative_items
+	;
+
+configuration_declarative_items
+	: 
+	| configuration_declarative_items
+	  configuration_declarative_item
+	;
+
+configuration_declarative_item
+	: use_clause
+	| attribute_specification
+	;
+
+
+
+block_configuration
+	: FOR
+	  block_specification
+	  use_clauses
+	  configuration_items
+	  END_ERR
+	  FOR
+	  Semicolon_ERR
+	;
+
+
+use_clauses
+	: 
+	| use_clause
+	  use_clauses
+	;
+
+configuration_items
+	: 
+	| configuration_items
+	  configuration_item
+	;
+
+block_specification
+	: label 
+	  opt_index_spec_opt
+	
+	;
+
+opt_index_spec_opt
+	: 
+	| LPAREN
+	  index_specification
+	  RightParen_ERR
+	;
+
+
+index_specification
+	: discrete_range
+	| expression
+	;
+
+configuration_item
+	: block_configuration
+	| component_configuration
+	;
+
+
+
+component_configuration
+	: FOR
+	  instantiation_list
+	  Colon
+	  name  
+	  USE__binding_indication_opt
+	  block_configuration_opt
+	  END_ERR
+	  FOR
+	  Semicolon_ERR
+	;
+
+USE__binding_indication_opt
+	: 
+	| USE
+	  binding_indication
+	  Semicolon_ERR
+	;
+
+block_configuration_opt
+	: 
+	| block_configuration
+	;
+
+
+subprogram_declaration
+	: subprogram_specification
+	  Semicolon_ERR
+	;
+
+subprogram_specification
+	: PROCEDURE
+	  designator
+	  procedure_parameter_list_opt
+	| FUNCTION
+	  designator
+	  function_parameter_list_opt
+	  RETURN
+	  type_mark
+	;
+
+designator
+	: Identifier
+	| operator_symbol
+	;
+
+operator_symbol    
+	: relational_operator
+	| adding_operator
+
+	| multiplying_operator
+	| logical_operator
+	| miscellaneous_operator   
+	| StringLit
+	;
+logical_operator : AND | OR | NAND | NOR | XOR
+	;
+miscellaneous_operator : DoubleStar | ABS | NOT
+	;
+
+procedure_parameter_list_opt
+	: 
+	| LPAREN
+	  procedure_parameter_element
+	  procedure_parameter_elements
+	  RightParen_ERR
+	| LPAREN
+	  error
+	  RightParen_ERR
+	;
+
+
+procedure_parameter_elements
+	: 
+	| procedure_parameter_elements
+	  Semicolon_ERR
+	  procedure_parameter_element
+	;
+
+
+procedure_parameter_element
+	: procedure_parameter_object_class_opt
+	  identifier_list
+	  Colon
+	  procedure_parameter_mode_opt
+	  
+	  type_mark
+	  constraint_opt
+	  VarAsgn__expression_opt
+	;
+
+procedure_parameter_object_class_opt
+	: 
+	| VARIABLE
+	| CONSTANT
+	;
+
+procedure_parameter_mode_opt
+	: 
+	| IN
+	| OUT
+	| INOUT
+	;
+
+function_parameter_list_opt
+	: 
+	| LPAREN
+	  function_parameter_element
+	  function_parameter_elements
+	  RightParen_ERR
+	| LPAREN
+	  error
+	  RightParen_ERR
+	;
+
+
+function_parameter_elements
+	: 
+	| function_parameter_elements
+	  Semicolon_ERR
+	  function_parameter_element
+	;
+
+function_parameter_element
+	: function_parameter_object_class_opt
+	  identifier_list
+	  Colon
+	  function_parameter_mode_opt
+	  type_mark
+	  constraint_opt 
+	  VarAsgn__expression_opt
+	;
+
+
+function_parameter_object_class_opt
+	: 
+	| CONSTANT
+	| SIGNAL
+	;
+
+function_parameter_mode_opt
+	: 
+	| IN
+	;
+
+
+
+subprogram_declarative_part
+	: 
+	| subprogram_declarative_part
+	  subprogram_declarative_item
+	;
+
+subprogram_declarative_item
+	: constant_declaration
+	| variable_declaration
+	| alias_declaration
+	| type_declaration
+	| subtype_declaration
+	| attribute_declaration
+	| attribute_specification
+	| subprogram_declaration
+	| subprogram_body
+	| file_declaration
+	| use_clause
+	;
+
+
+
+
+
+subprogram_body
+	: subprogram_specification
+	  IS
+	  subprogram_declarative_part
+	  BEGIN_	
+	  sequence_of_statements
+	  END_ERR
+	  designator_opt
+	  Semicolon_ERR
+	;
+
+designator_opt
+	: 
+	| designator
+	;
+
+
+
+
+
+
+package_declaration
+	: PACKAGE 
+	  Identifier
+	  IS
+	  package_declarative_part
+	  END_ERR
+	  simple_name_opt
+	  Semicolon_ERR
+	| PACKAGE 
+		error
+	;
+
+package_declarative_part
+	: package_declarative_items
+	;
+
+package_declarative_items
+	: 
+	| package_declarative_items
+	  package_declarative_item
+	;
+
+package_declarative_item
+	: type_declaration
+	| subtype_declaration
+	| attribute_declaration
+	| constant_declaration
+	| alias_declaration
+	| subprogram_declaration
+	| component_declaration
+	| attribute_specification
+	| signal_declaration
+	| file_declaration
+	| disconnection_specification
+	| use_clause
+	| error END_ERR
+	  Semicolon_ERR
+	;
+
+
+
+
+package_body
+	: PACKAGE
+	  BODY
+	  Identifier
+	  IS  
+	  package_body_declarative_part
+	  END_ERR
+	  simple_name_opt
+	  Semicolon_ERR
+	| PACKAGE
+  	  BODY
+  	  error
+	;
+
+package_body_declarative_part
+	: package_body_declarative_items
+	;
+
+package_body_declarative_items
+	: 
+	| package_body_declarative_items
+	  package_body_declarative_item
+	;	
+
+package_body_declarative_item
+	: subprogram_declaration
+	| subprogram_body
+	| type_declaration
+	| subtype_declaration
+	| constant_declaration
+	| file_declaration
+	| alias_declaration
+	| use_clause
+	;
+
+
+scalar_type_definition
+	: enumeration_type_definition
+	| range_type_definition  
+	| physical_type_definition
+	;
+
+range_constraint
+	: RANGE
+	  range
+	;
+	
+range
+	: attribute_name 
+	| simple_expression
+	  direction
+	  simple_expression
+	;
+
+direction
+	: TO
+	| DOWNTO
+	;
+
+
+enumeration_type_definition
+	: LPAREN
+	  enumeration_literal
+	  enumeration_literals
+	  RightParen_ERR
+	;
+
+
+enumeration_literals
+	: 
+	| enumeration_literals
+	  Comma
+	  enumeration_literal
+		
+	;
+
+enumeration_literal
+	: Identifier
+	| CharacterLit
+	;
+
+
+
+
+range_type_definition
+	: range_constraint
+	;
+
+
+physical_type_definition
+	: range_constraint
+	  UNITS
+	  base_unit_declaration
+	  secondary_unit_declarations
+	  END_ERR
+	  UNITS
+	;
+
+
+secondary_unit_declarations
+	: 
+	| secondary_unit_declarations
+	  secondary_unit_declaration		
+	;
+
+base_unit_declaration
+	: Identifier
+	  Semicolon_ERR
+	;
+
+secondary_unit_declaration
+	: Identifier
+	  EQSym
+	  physical_literal
+	  Semicolon_ERR
+	;
+
+physical_literal
+	: abstract_literal_opt
+	  name      
+	;
+
+
+abstract_literal_opt
+	: 
+	| abstract_literal
+	;
+
+
+composite_type_definition
+	: array_type_definition
+	| record_type_definition
+	;
+
+
+array_type_definition
+	: unconstrained_array_definition
+	| constrained_array_definition
+	;
+
+unconstrained_array_definition
+	: ARRAY
+	  LPAREN
+	  index_subtype_definition
+	  index_subtype_definitions
+	  RightParen_ERR
+	  OF
+	  subtype_indication
+	;
+
+
+index_subtype_definitions
+	: 
+	| index_subtype_definitions
+	  Comma
+	  index_subtype_definition
+	;
+
+constrained_array_definition
+	: ARRAY
+	  index_constraint
+	  OF
+	  subtype_indication
+	;
+
+index_subtype_definition
+	: name    
+	  RANGE
+	  Box
+	;
+
+index_constraint
+	: LPAREN
+	  discrete_range
+	  discrete_ranges
+	  RightParen_ERR
+	;
+
+discrete_ranges
+	: 
+	| discrete_ranges
+	  Comma
+	  discrete_range
+		
+	;
+
+discrete_range
+	: range  
+	| name
+	  range_constraint   
+	| type_mark 	
+	;
+
+
+record_type_definition
+	: RECORD
+	  element_declaration
+	  element_declarations
+	  END_ERR
+	  RECORD
+	| RECORD
+	  error
+	  END_ERR
+	  RECORD
+	;
+
+
+element_declarations
+	: 
+	| element_declarations
+	  element_declaration
+		  
+	;
+
+element_declaration
+	: identifier_list
+	  Colon
+	  element_subtype_definition
+	  Semicolon_ERR
+	;
+
+identifier_list
+	: Identifier
+	  identifiers
+	;
+
+
+identifiers
+	: 
+	| Comma
+	  Identifier
+	  identifiers
+	;
+
+
+element_subtype_definition
+	: subtype_indication
+	;
+
+
+
+access_type_definition
+	: ACCESS
+	  subtype_indication
+	;
+
+
+
+incomplete_type_declaration
+	: TYPE
+	  Identifier
+	  Semicolon_ERR
+	;
+
+
+
+
+file_type_definition
+	: FILE_
+	  OF
+	  type_mark
+	;
+
+
+
+type_declaration
+	: full_type_declaration
+	| incomplete_type_declaration
+	;
+
+full_type_declaration
+	: TYPE
+	  Identifier
+	  IS
+	  type_definition
+	  Semicolon_ERR
+	;
+
+type_definition
+	: scalar_type_definition
+	| composite_type_definition
+	| access_type_definition
+	| file_type_definition
+	| error Semicolon_ERR
+	;
+
+
+subtype_declaration
+	: SUBTYPE
+	  Identifier
+	  IS
+	  subtype_indication
+ 	  Semicolon_ERR
+	;
+
+subtype_indication
+	: type_or_function_name
+	  type_mark
+	  constraint_opt
+	| type_mark
+	  constraint_opt
+	;
+
+
+constraint_opt
+	: 
+	| constraint
+	;
+
+type_or_function_name
+	: expanded_name
+	;
+
+
+expanded_name
+	: simple_name  
+	| expanded_name  
+	  Dot
+	  simple_name  
+	  	
+	;
+
+type_mark
+	: expanded_name		
+	;
+
+constraint
+	: range_constraint
+	| aggregate   
+					          
+	;
+	
+
+constant_declaration
+	: CONSTANT
+	  identifier_list
+	  Colon
+	  subtype_indication
+	  VarAsgn__expression_opt
+	  Semicolon_ERR
+	;
+
+
+signal_declaration
+	: SIGNAL
+	  identifier_list
+	  Colon
+	  subtype_indication
+	  signal_kind_opt
+	  VarAsgn__expression_opt
+	  Semicolon_ERR
+	;
+
+signal_kind_opt
+	: 
+	| signal_kind
+	;
+
+signal_kind
+	: REGISTER
+	| BUS
+	;
+
+
+variable_declaration
+	: VARIABLE
+	  identifier_list
+	  Colon
+	  subtype_indication
+	  VarAsgn__expression_opt
+	  Semicolon_ERR
+	;
+
+
+
+file_declaration
+	: FILE_
+	  Identifier
+	  Colon
+	  subtype_indication
+	  IS
+	  mode_opt
+	  expression
+	  Semicolon_ERR
+	;
+
+
+association_list
+	: association_element
+	  association_elements
+	;
+
+association_elements
+	: 
+	| Comma
+	  association_element
+	  association_elements
+	   
+	;
+
+association_element
+	:   
+	  name 
+	  Arrow
+	   
+	  OPEN_or_expression   
+	|  
+	OPEN_or_expression   
+	;
+
+OPEN_or_expression
+	: OPEN
+	| expression
+	;
+	
+
+alias_declaration
+	:  ALIAS
+  	 	Identifier
+		Colon
+		subtype_indication
+		IS
+		name
+		Semicolon_ERR
+	;
+
+
+
+attribute_declaration
+	: ATTRIBUTE
+	  Identifier
+	  Colon
+	  type_mark
+	  Semicolon_ERR
+	;
+
+
+
+component_declaration
+	: COMPONENT
+	  Identifier
+	  GENERIC__local_generic_list_opt
+	  PORT__local_port_list_opt
+	  END_ERR
+	  COMPONENT
+	  Semicolon_ERR
+	;
+
+PORT__local_port_list_opt
+	: 
+	| PORT
+	  LPAREN
+	  local_port_list
+	  RightParen_ERR
+	  Semicolon_ERR
+	;
+
+local_port_list
+	: local_port_element
+	  local_port_elements
+	| error RightParen_ERR
+	;
+
+
+local_port_elements
+	: 
+	| local_port_elements
+	  Semicolon_ERR
+	  local_port_element
+	;
+
+
+local_port_element
+	: SIGNAL_opt
+	  identifier_list
+	  Colon
+	  local_port_mode_opt
+	  type_mark
+	  constraint_opt
+	;
+
+local_port_mode_opt
+	: 
+	| IN
+	| OUT
+	| INOUT
+	| BUFFER
+	| LINKAGE
+	;
+
+GENERIC__local_generic_list_opt
+	: 
+	| GENERIC
+	  LPAREN
+	  local_generic_list
+	  RightParen_ERR
+	  Semicolon_ERR
+	;
+
+local_generic_list
+	: local_generic_element
+	  local_generic_elements
+	| error RightParen_ERR
+	;
+
+
+local_generic_elements
+	: 
+	| local_generic_elements
+	  Semicolon_ERR
+	  local_generic_element
+	;
+
+
+local_generic_element
+	: CONSTANT_opt
+	  identifier_list
+	  Colon
+	  IN_opt
+	  type_mark
+	  constraint_opt
+	;
+
+attribute_specification
+	: ATTRIBUTE
+	  attribute_designator
+	  OF
+	  entity_specification
+	  IS
+	  expression
+	  Semicolon_ERR
+	;
+
+entity_specification
+	: entity_name_list
+	  Colon
+	  entity_class
+	;
+
+
+entity_class
+	: ENTITY
+	| ARCHITECTURE
+	| PACKAGE
+	| FUNCTION
+	| PROCEDURE
+	| SUBTYPE
+	| CONSTANT
+	| VARIABLE
+	| SIGNAL
+	| LABEL
+	| TYPE
+	| CONFIGURATION
+	| COMPONENT
+	;
+
+entity_name_list
+	: entity_designator
+	  entity_designators
+	| OTHERS
+	| ALL
+	;
+
+entity_designators
+	: 
+	| entity_designators
+	  Comma
+	  entity_designator
+	;
+
+entity_designator
+	: simple_name
+	| operator_symbol
+	;
+
+
+
+configuration_specification
+	: FOR
+	  instantiation_list
+	  Colon
+	  
+	  name
+	  USE
+	  binding_indication
+	  Semicolon_ERR
+	| FOR
+	  error
+	  Semicolon_ERR
+	;
+
+instantiation_list
+	: identifier_list
+	| OTHERS
+	| ALL
+	| error Colon
+		
+	;
+
+	
+binding_indication
+	: entity_aspect
+	  generic_map_aspect_opt
+	  port_map_aspect_opt
+	;
+
+
+
+entity_aspect
+	: ENTITY
+	   
+	  name 		
+	  architecture_identifier_opt
+	| CONFIGURATION
+	  Identifier 
+	  
+	| OPEN
+	;
+
+architecture_identifier_opt
+	: 
+	| LPAREN
+	  simple_name
+	  RightParen_ERR
+	;
+
+element_associations
+	: 
+	| element_associations
+	  Comma
+	  element_association
+		  
+	;
+
+
+disconnection_specification
+	: DISCONNECT
+	  guarded_signal_specification
+	  AFTER
+	  expression
+	  Semicolon_ERR
+	;
+
+guarded_signal_specification
+	: signal_list
+	  Colon
+	  type_mark
+	;
+
+name
+	: simple_name   
+	| indexed_name     
+	| selected_name
+	| attribute_name 
+	;
+
+prefix
+	: name  
+	;
+
+
+
+simple_name      
+	: Identifier
+	;
+
+
+simple_name_opt
+	: 
+	| simple_name
+	;
+
+
+
+selected_name
+	: prefix
+	  Dot
+	  suffix
+	;
+
+suffix
+	: simple_name
+	| CharacterLit
+  
+	| ALL
+	;
+
+
+indexed_name    
+	: name               
+	  aggregate  
+	;
+
+
+attribute_name
+	: name   
+	  Apostrophe
+	  attribute_designator
+	  aggregate_opt  
+	;
+
+
+aggregate_opt
+	: 
+	| aggregate
+	;
+
+attribute_designator
+	: simple_name      
+	| RANGE      
+	;
+
+expression
+	: relationAND__relation
+	| relationOR__relation
+	| relationNAND_NOR__relation
+	| relationXOR__relation
+	;
+
+
+relationAND__relation
+	: relation
+	  AND
+	  relation
+	| relationAND__relation
+	  AND
+	  relation
+	;
+
+relationOR__relation
+	: relation
+	  OR
+	  relation
+	| relationOR__relation
+	  OR
+	  relation
+	;
+
+relationNAND_NOR__relation
+	: relation
+	| relation
+	  NAND
+	  relation
+	| relation
+	  NOR
+	  relation
+	;
+
+	
+relationXOR__relation
+	: relation
+	  XOR
+	  relation
+	| relationXOR__relation
+	  XOR
+	  relation
+	;
+
+relation
+	: simple_expression
+	  relop__simple_expression_opt
+	;
+
+
+relop__simple_expression_opt
+	: 
+	| relational_operator
+	  simple_expression
+	;
+
+simple_expression
+	: sign_opttermadd_op__terms
+	;
+
+term
+	: factor
+	| term
+	  multiplying_operator
+	  factor
+		
+	;
+
+
+sign_opttermadd_op__terms
+	: term   UNARY_SIGN
+	| sign
+	  term   UNARY_SIGN
+	| sign_opttermadd_op__terms
+	  adding_operator
+	  term
+	;
+
+factor
+	: primary
+	  DoubleStar__primary_opt
+	| ABS
+	  primary
+	| NOT
+	  primary
+	;
+
+
+DoubleStar__primary_opt
+	: 
+	| DoubleStar
+	  primary
+	;
+
+    primary
+	    : literal
+	    | qualified_expression
+	    | name     
+			    
+	    | aggregate  
+		| allocator
+	    ;
+
+    relational_operator
+	    : EQSym
+	    | NESym
+	    | LTSym
+	    | LESym
+	    | GTSym
+	    | GESym
+	    ;
+
+    
+    adding_operator
+	    : Plus
+	    | Minus
+	| Ampersand
+	;
+
+sign
+	: Plus
+	| Minus
+	;
+
+
+multiplying_operator
+	: Star
+	| Slash
+	| MOD
+	| REM
+	;
+
+
+literal
+	: numeric_literal
+	| CharacterLit	
+	| StringLit
+	| BitStringLit
+	| NULL_
+	;
+
+numeric_literal
+	: abstract_literal
+	| abstract_literal      
+	  name 
+		
+	 	
+	;
+
+
+aggregate
+	: LPAREN
+	  element_association
+	  element_associations
+	  RightParen_ERR
+	;
+
+element_association
+	: expression
+	| choice
+	  Bar__choice_opt
+	  Arrow
+	  expression
+	| simple_expression
+	  direction	
+	  simple_expression
+	| name
+	  range_constraint
+	;
+
+choices
+	: choice
+	  Bar__choice_opt
+		
+	;
+
+
+Bar__choice_opt
+	: 
+	| Bar__choice_opt
+	  Bar
+	  choice
+	;
+
+choice
+	: simple_expression  
+	| simple_expression
+	  direction
+	  simple_expression	
+	| name
+	  range_constraint
+	| OTHERS
+	;
+
+
+qualified_expression
+	: name
+	  Apostrophe
+	  aggregate
+	;
+
+
+allocator
+	: NEW
+	  qualified_expression
+	;
+
+
+sequence_of_statements
+	: sequential_statements
+	| error END_ERR
+		
+	| error ELSIF
+		
+	| error ELSE
+		
+	| error WHEN
+		
+	;
+
+
+sequential_statements
+	: 
+	| sequential_statement
+	sequential_statements
+	;
+
+sequential_statement
+	: assertion_statement
+	| signal_assignment_statement
+	| variable_assignment_statement
+	| if_statement
+	| case_statement
+	| loop_statement
+	| next_statement
+	| exit_statement
+	| return_statement
+	| null_statement
+	| procedure_call_statement
+	| wait_statement
+	;
+
+
+wait_statement
+	: WAIT
+	  sensitivity_clause_opt
+	  condition_clause_opt
+	  timeout_clause_opt
+	  Semicolon_ERR
+	;
+
+sensitivity_clause_opt
+	: 
+	| sensitivity_clause
+	;
+
+condition_clause_opt
+	: 
+	| condition_clause
+	;
+
+timeout_clause_opt
+	:  
+	| timeout_clause
+	;
+
+sensitivity_clause
+	: ON
+	  
+	  signal_list
+	;
+
+condition_clause
+	: UNTIL
+	  expression
+	;
+
+timeout_clause
+	: FOR
+	  expression
+	;
+
+
+signal_list
+	: name
+	  names
+	| OTHERS
+	| ALL
+	;
+
+
+names
+	: 
+	| names
+	  Comma
+	  name
+	;
+
+
+assertion_statement
+	: ASSERT
+	  expression
+	  REPORT__expression_opt
+	  SEVERITY__expression_opt
+	  Semicolon_ERR
+	;
+
+
+REPORT__expression_opt
+	: 
+	| REPORT
+	  expression
+	;
+
+SEVERITY__expression_opt
+	: 
+	| SEVERITY
+	  expression
+	;
+
+
+signal_assignment_statement
+	: target
+	  LESym
+	  TRANSPORT_opt
+	  waveform
+	  Semicolon_ERR
+	;
+
+target
+	: name
+	| aggregate
+	;
+
+
+waveform
+	: waveform_element
+	  waveform_elements
+	;
+
+
+waveform_elements
+	: 
+	| Comma
+	  waveform_element
+	  waveform_elements
+	;
+
+
+waveform_element
+	: expression   
+	  AFTER__expression_opt
+	;
+
+
+AFTER__expression_opt
+	: 
+	| AFTER
+	  expression 
+	;
+
+
+variable_assignment_statement
+	: target
+	  VarAsgn
+	  expression
+	  Semicolon_ERR
+	;
+
+
+procedure_call_statement
+	: name 			
+	  Semicolon_ERR     
+	;
+
+
+if_statement
+	: IF
+	  condition
+	  THEN
+	  sequence_of_statements
+	  ELSIF__THEN__seq_of_stmts
+	  ELSE__seq_of_stmts_opt
+	  END_ERR
+	  IF
+	  Semicolon_ERR
+	;
+
+
+ELSIF__THEN__seq_of_stmts
+	: 
+	| ELSIF
+	  condition
+	  THEN
+	  sequence_of_statements
+	  ELSIF__THEN__seq_of_stmts
+		
+	;
+
+ELSE__seq_of_stmts_opt
+	: 
+	| ELSE
+	  sequence_of_statements
+		
+	;
+
+
+case_statement
+	: CASE
+	  expression
+	  IS
+	  case_statement_alternative
+	  case_statement_alternatives
+	  END_ERR
+	  CASE
+	  Semicolon_ERR
+	;
+
+
+case_statement_alternatives
+	: 
+	| case_statement_alternatives
+	  case_statement_alternative
+		
+	;
+
+case_statement_alternative
+	: WHEN
+	  choices
+	  Arrow
+	  sequence_of_statements
+	;
+
+loop_statement
+	:	a_label
+		unlabeled_loop_statement
+	|	unlabeled_loop_statement
+	;
+
+unlabeled_loop_statement
+	: iteration_scheme_opt
+	  LOOP
+	  sequence_of_statements
+	  END_ERR
+	  LOOP
+	  label_opt
+	  Semicolon_ERR
+	;
+
+
+iteration_scheme_opt
+	: 
+	| iteration_scheme
+	;
+
+iteration_scheme
+	: WHILE
+	  condition
+	| FOR
+	  loop_parameter_specification
+	;
+
+label_opt
+	: 
+	| label
+	;
+
+
+loop_parameter_specification
+	: Identifier
+	  IN
+	  discrete_range
+	;
+	
+
+next_statement
+	: NEXT
+	  label_opt
+	  WHEN__condition_opt
+	  Semicolon_ERR
+	;
+	
+
+WHEN__condition_opt
+	: 
+	| WHEN
+	  condition
+	;
+	
+
+exit_statement
+	: EXIT
+	  label_opt
+	  WHEN__condition_opt
+	  Semicolon_ERR
+	;
+
+
+return_statement
+	: RETURN
+	  expression_opt
+	  Semicolon_ERR
+	;
+
+
+expression_opt
+	: 
+	| expression
+	;
+
+
+null_statement
+	: NULL_
+	  Semicolon_ERR
+	;
+
+set_of_statements
+	: concurrent_statements
+	| error END_ERR
+	;
+
+
+concurrent_statements
+	: 
+	| concurrent_statement
+	  concurrent_statements
+	;
+
+concurrent_statement
+	: block_statement
+	| process_statement
+	| concurrent_assertion_statement
+	| concurrent_signal_assignment_statement
+	| component_instantiation_statement
+	| generate_statement
+	| concurrent_procedure_call
+	;
+
+
+block_statement    
+	: a_label
+	  BLOCK
+	  guard_expression_opt
+	  generic_clause_map_aspect_opt
+	  port_clause_map_aspect_opt
+	  block_declarative_part
+	  BEGIN_
+	  set_of_statements
+	  END_ERR
+	  BLOCK
+	  label_opt
+	  Semicolon_ERR
+	;
+
+
+guard_expression_opt
+	: 
+	| guard_expression
+	;
+
+guard_expression
+	: LPAREN
+	  expression
+	  RightParen_ERR
+	;
+
+generic_clause_map_aspect_opt
+	: 
+	| generic_clause
+	  generic_map_aspect_Semicolon_opt
+	;
+generic_map_aspect_Semicolon_opt 
+	: 
+	| generic_map_aspect
+	Semicolon_ERR
+	;
+
+port_clause_map_aspect_opt
+	: 
+	| port_clause
+	  port_map_aspect_Semicolon_opt
+	;
+port_map_aspect_Semicolon_opt 
+	:
+	| port_map_aspect
+	Semicolon_ERR
+	;
+
+block_declarative_part
+	: block_declarative_items
+	;
+
+
+process_statement
+	:	a_label
+		unlabeled_process_statement
+	|	unlabeled_process_statement
+	;
+
+unlabeled_process_statement
+	: PROCESS
+	  sensitivity_list_opt
+	  process_declarative_part
+	  BEGIN_
+	  sequence_of_statements
+	  END_ERR
+	  PROCESS
+	  label_opt
+	  Semicolon_ERR
+	;
+
+
+sensitivity_list_opt
+	: 
+	| sensitivity_list
+	;
+
+sensitivity_list
+	: LPAREN
+	  signal_list
+	  RightParen_ERR
+	;
+	
+process_declarative_part
+	: process_declarative_items
+	;
+
+
+process_declarative_items
+	: 
+	| process_declarative_items
+	  process_declarative_item
+		
+	;
+
+process_declarative_item
+	: constant_declaration
+	| variable_declaration
+	| type_declaration
+	| subtype_declaration
+	| attribute_declaration
+	| attribute_specification
+	| subprogram_declaration
+	| subprogram_body
+	| file_declaration
+	| alias_declaration
+	| use_clause
+	;
+
+concurrent_procedure_call
+	: a_label
+	  unlabeled_concurrent_procedure_call
+	| unlabeled_concurrent_procedure_call
+	;
+
+unlabeled_concurrent_procedure_call
+	: procedure_call_statement
+	;
+
+concurrent_assertion_statement
+	:	a_label
+		unlabeled_concurrent_assertion_statement
+	|	unlabeled_concurrent_assertion_statement
+	;
+
+unlabeled_concurrent_assertion_statement
+	: assertion_statement
+	;
+
+concurrent_signal_assignment_statement
+	: a_label
+	  unlabeled_conditional_signal_assignment
+	| unlabeled_conditional_signal_assignment
+	| a_label
+	  unlabeled_selected_signal_assignment
+	| unlabeled_selected_signal_assignment
+	;
+
+
+
+unlabeled_conditional_signal_assignment
+	: target
+	  LESym
+	  
+	  GUARDED_opt
+	  TRANSPORT_opt
+	  
+	  waveform__WHEN__condition__ELSE
+	  waveform
+ 	  Semicolon_ERR
+	;
+
+
+waveform__WHEN__condition__ELSE
+	: 
+	| waveform__WHEN__condition__ELSE
+	  waveform
+	  WHEN
+	  expression 
+	  ELSE
+	;
+
+
+unlabeled_selected_signal_assignment
+	: WITH
+	  expression
+	  SELECT
+	  target
+	  LESym
+	  
+	  GUARDED_opt
+	  TRANSPORT_opt
+	  
+	  waveform
+	  WHEN
+	  choices
+	  waveform__WHEN__choices
+	  Semicolon_ERR
+	;
+
+waveform__WHEN__choices
+	: 
+	| waveform__WHEN__choices
+	  Comma
+	  waveform
+	  WHEN
+	  choices
+	;
+
+
+GUARDED_opt
+	: 
+	| GUARDED
+	;
+
+TRANSPORT_opt
+	: 
+	| TRANSPORT
+	;
+
+
+component_instantiation_statement
+	: a_label
+	   
+	   name  
+	  generic_map_aspect_opt
+	  port_map_aspect_opt
+	  Semicolon_ERR
+	;
+
+
+port_map_aspect_opt
+	: 
+	| port_map_aspect
+	;
+port_map_aspect
+	:
+	  PORT
+	  MAP
+	  LPAREN        
+	  association_list
+	  RightParen_ERR
+	;
+
+
+generic_map_aspect_opt
+	: 
+	| generic_map_aspect
+	; 
+generic_map_aspect
+	:	
+	  GENERIC
+ 	  MAP
+	  LPAREN
+	  association_list
+	  RightParen_ERR
+	;
+
+generate_statement
+	:	a_label
+		unlabeled_generate_statement
+	;
+
+unlabeled_generate_statement
+	: generation_scheme
+	  GENERATE
+	  set_of_statements
+	  END_ERR
+	  GENERATE
+	  label_opt
+	  Semicolon_ERR
+	;
+
+generation_scheme
+	: FOR
+	  generate_parameter_specification
+	| IF
+	  condition
+	;
+
+generate_parameter_specification
+	: Identifier
+	  IN
+	  discrete_range
+	;
+
+condition
+	: expression
+	;
+
+a_label
+	:	label
+		Colon
+	;
+
+
+label
+	: Identifier
+	;
+
+use_clause
+	: USE
+	  selected_name    
+	  selected_names
+	  Semicolon_ERR
+	;
+
+
+selected_names
+	: 
+	| selected_names
+	  Comma
+	  selected_name
+	;
+
+design_file
+	: design_unit
+	  design_units
+	;
+
+design_units
+	: 
+	| design_unit
+	  design_units
+	;
+
+design_unit
+	: context_clause
+	  library_unit
+	;
+
+library_unit
+	: primary_unit
+	| secondary_unit
+	| error
+	;
+
+primary_unit
+	: entity_declaration
+	| configuration_declaration
+	| package_declaration
+	;
+
+secondary_unit
+	: architecture_body
+	| package_body
+	;
+
+
+
+
+library_clause
+	: LIBRARY
+	  logical_name_list
+	  Semicolon_ERR
+	;
+
+logical_name_list
+	: Identifier
+	  logical_names
+	;
+
+logical_names
+	: 
+	| logical_names
+	  Comma
+	  Identifier
+	;
+
+
+context_clause
+	: context_items
+	;
+
+context_items
+	: 
+	| context_items
+	  context_item
+	;
+
+context_item
+	: library_clause
+	| use_clause
+	;
+
+RightParen_ERR	
+	:  RPAREN			
+	;
+
+Semicolon_ERR
+	:  Semicolon			
+	;
+
+END_ERR
+	:  END			
+	;
+
+abstract_literal
+	: DecimalInt
+	| DecimalReal
+	| BasedInt
+	| BasedReal
+	;
+
+
