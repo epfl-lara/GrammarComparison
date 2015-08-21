@@ -13,6 +13,7 @@ class CountingTest extends FlatSpec with ShouldMatchers {
   import GrammarReaders._
   
   implicit val opctx = new GlobalContext(enableStats = false)
+  implicit val enumctx = new EnumerationContext()
   
   "getMinWord" should " should work correctly for Olshansky1977" in {    
     val wordGen =  new SizeBasedRandomAccessGenerator(Olshansky1977.reference.cfGrammar, 10)    
