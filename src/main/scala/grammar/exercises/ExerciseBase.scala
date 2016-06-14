@@ -147,7 +147,7 @@ sealed abstract class ImportGrammarDatabase(val file: java.io.File, val dir: Str
       val refElems = (exerciseElem \ "reference")
       val refFiles = (exerciseElem \ "referenceFile")
       val (refGrammar, errmsg) = if (!refElems.isEmpty) {
-        val rules = (refElems(0) \ "rule").map(_.text)
+        val rules = (refElems(0) \ "rule").map(_.text.trim)
         (new GrammarParser()).parseGrammar(rules.toList)
       } else {
         //see if we have a reference file
@@ -245,6 +245,6 @@ object GrammarDatabase {
           }
         </grammar>: xml.Node)
     }</grammars>
-    GrammarWriter.dumpFile(gdb.file, new scala.xml.PrettyPrinter(80, 2).format(result))
+    GrammarWriter.dumpFile(gdb.file, new scala.xml.PrettyPrinter(1000, 2).format(result))
   }
 }
