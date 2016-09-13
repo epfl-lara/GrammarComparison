@@ -31,7 +31,7 @@ object CNFConverter {
     else false
 
   //TODO: the use of 'Set' introduces some amount of nondeterminism
-  def removeUnitProductions(grammar: Grammar): Grammar = {
+  def removeUnitProductions[T](grammar: Grammar[T]): Grammar[T] = {
 
     def isUnitRule(rule: Rule) = rule match {
       case Rule(_, List(n : Nonterminal)) => true
@@ -59,13 +59,13 @@ object CNFConverter {
         otherLeftSides.map(left => Rule(left, rightSide))
     }
     val rulesWOUnitProductions = (nonUnitRules ++ newrules).distinct //drop all the unitRules       
-    Grammar(grammar.start, rulesWOUnitProductions)
+    Grammar[T](grammar.start, rulesWOUnitProductions)
   }
 
   /**
    * Ensures that the right side of every rule has at most 2 Nonterminals
    */
-  def reduceArity(grammar: Grammar): Grammar = {
+  def reduceArity[T](grammar: Grammar[T]): Grammar[T] = {
 
     val rulesWithArityTwo = grammar.rules.flatMap {
       case rule @ Rule(leftSide, rightSide) if rightSide.size <= 2 =>
@@ -89,13 +89,13 @@ object CNFConverter {
         newrules
       }
     }
-    Grammar(grammar.start, rulesWithArityTwo)
+    Grammar[T](grammar.start, rulesWithArityTwo)
   }
 
   /**
    * Ensures that the terminals occur alone on the right-hand side
    */
-  def normalizeTerminals(grammar: Grammar): Grammar = {
+  def normalizeTerminals[T](grammar: Grammar[T]): Grammar[T] = {
     //A mapping from a terminal to the nonterminal that produces it      
     var terminalToNonterminal = Map[Terminal, Nonterminal]()
 
@@ -122,13 +122,13 @@ object CNFConverter {
         }
         Rule(leftSide, newRightSide) +: newRules
     }
-    Grammar(grammar.start, rulesWithLoneTerminals)
+    Grammar[T](grammar.start, rulesWithLoneTerminals)
   }
 
   /**
    * Removes all rules unreachable from the start symbol
    */
-  def removeUnreachableRules(grammar: Grammar): Grammar = {
+  def removeUnreachableRules[T](grammar: Grammar[T]): Grammar[T] = {
     //Here, a set is used but this should not result in nondeterminism
     /*val reachableNonterminals = Util.fixpoint((reach: Set[Nonterminal]) => {
       val newreach = grammar.rules flatMap {
@@ -140,7 +140,7 @@ object CNFConverter {
     })(Set(grammar.start))*/
     val reachableNonterminals = grammar.nontermsInPostOrder.toSet
     val reachableRules = grammar.rules.filter(rule => reachableNonterminals.contains(rule.leftSide))
-    Grammar(grammar.start, reachableRules)
+    Grammar[T](grammar.start, reachableRules)
   }
 
   /**
@@ -148,7 +148,7 @@ object CNFConverter {
    * It also ensures that the only way an empty string can be derived is
    * using Start -> epsilon.
    */
-  def removeEpsilonProductions(grammar: Grammar): Grammar = {
+  def removeEpsilonProductions[T](grammar: Grammar[T]): Grammar[T] = {
 
     def isEpsilonRule(rule: Rule) = rule.rightSide.isEmpty
 
@@ -200,14 +200,14 @@ object CNFConverter {
         List()
     }
 
-    Grammar(grammar.start, newrules)
+    Grammar[T](grammar.start, newrules)
   }
 
   /**
    * Removes all rules that unproductive i.e, will never produce a valid string
    * consisting only of terminals
    */
-  def removeUnproductiveRules(grammar: Grammar): Grammar = {
+  def removeUnproductiveRules[T](grammar: Grammar[T]): Grammar[T] = {
     //Here, a set is used but this should not result in nondeterminism
     val productiveNonterminals = Util.fixpoint((productives: Set[Symbol]) => {
       val newproductives = grammar.rules collect {
@@ -219,13 +219,13 @@ object CNFConverter {
 
     val productiveRules = grammar.rules.filter(rule =>
       rule.rightSide.forall(sym => sym.isInstanceOf[Terminal] || productiveNonterminals.contains(sym)))
-    Grammar(grammar.start, productiveRules)
+    Grammar[T](grammar.start, productiveRules)
   }
 
   /**
    * Pulls the rule corresponding to the start symbol to the top if it is not the case
    */
-  def pullStartToTop(grammar: Grammar): Grammar = {
+  def pullStartToTop[T](grammar: Grammar[T]): Grammar[T] = {
     val rules = grammar.rules
     if (rules.isEmpty)
       grammar
@@ -238,23 +238,23 @@ object CNFConverter {
           throw new IllegalStateException("No rule for start symbol!")
       } else
         rules
-      Grammar(grammar.start, newRules)
+      Grammar[T](grammar.start, newRules)
     }
   }
 
   /**
    * Add a new start symbol if it is used in the right side of productions
    */
-  def addStartSymbol(g: Grammar): Grammar = {
+  def addStartSymbol[T](g: Grammar[T]): Grammar[T] = {
     if (g.rules.exists(_.rightSide.contains(g.start))) {
       val newstart = copy(g.start)
-      Grammar(newstart, Rule(newstart, List(g.start)) +: g.rules)
+      Grammar[T](newstart, Rule(newstart, List(g.start)) +: g.rules)
     } else
       g
   }
 
-  def toCNF(grammar: Grammar): Grammar = {
-    val dumpGrammar = (title: String) => (g: Grammar) => {
+  def toCNF[T](grammar: Grammar[T]): Grammar[T] = {
+    val dumpGrammar = (title: String) => (g: Grammar[T]) => {
       println(title + " phase: ");
       println("----------------");
       println(g);
@@ -263,7 +263,7 @@ object CNFConverter {
     }
 
     val transformations = ( //dumpGrammar("") andThen
-      addStartSymbol _
+      addStartSymbol[T] _
       andThen normalizeTerminals
       //andThen dumpGrammar("Normalize Terminals")
       andThen removeUnproductiveRules
@@ -284,8 +284,8 @@ object CNFConverter {
   /**
    * Removes productions of the form S -> S
    */  
-  def removeSelfProductions(g: Grammar) : Grammar = {
-    Grammar(g.start, g.rules.filterNot{
+  def removeSelfProductions[T](g: Grammar[T]) : Grammar[T] = {
+    Grammar[T](g.start, g.rules.filterNot{
       case Rule(l, List(sym)) => l == sym
       case _ => false
     })
@@ -295,10 +295,10 @@ object CNFConverter {
    * This applies removeUnitProductions and
    * removeUnreachableRules until a fix-point
    */
-  def simplify(ing: Grammar) = {
+  def simplify[T](ing: Grammar[T]) = {
     val g = removeSelfProductions(ing)
     //it suffices to compare rule sizes as rules can only be removed by the transformation
-    val trans = (removeUnproductiveRules _ andThen removeUnreachableRules)
+    val trans = (removeUnproductiveRules[T] _ andThen removeUnreachableRules)
     var currSize = g.rules.size
     var oldSize = 0
     var currg = g
@@ -316,7 +316,7 @@ object CNFConverter {
    * Additionally, it also remove unit nonterminals, which are nonterminals
    * that have only one production.
    */
-  def removeCNFNonterminals(inG: Grammar, irules: List[Rule] = List()): List[Rule] = {
+  def removeCNFNonterminals[T](inG: Grammar[T], irules: List[Rule] = List()): List[Rule] = {
 
     val cnfNonterminals = inG.nonTerminals.filter(isCNFNonterminal).toSet    
 
@@ -330,7 +330,7 @@ object CNFConverter {
       }.toSet
     }
 
-    def removeCNFNontermsInRules(input: (Grammar, List[Rule])) = {
+    def removeCNFNontermsInRules(input: (Grammar[T], List[Rule])) = {
       val (g, rules) = input
       //val nontermsToRemove = nontermsInRules(rules).intersect(cnfNonterminals ++ unitNts)
       val nontermsToRemove = nontermsInRules(rules).intersect(cnfNonterminals)
@@ -369,7 +369,7 @@ object CNFConverter {
   }
 
  
-  def cnfToGrammar(cnfG: Grammar): Grammar = {
+  def cnfToGrammar[T](cnfG: Grammar[T]): Grammar[T] = {
     val cnfNonterminals = cnfG.nonTerminals.filter(isCNFNonterminal)
     //val sortedNonterms = (cnfNonterminals ++ unitNTs(cnfG)).distinct.sortBy(nontermUses(cnfG, _))
     val sortedNonterms = cnfNonterminals.distinct.sortBy(nontermUses(cnfG, _))
@@ -378,23 +378,23 @@ object CNFConverter {
   }
 
   
-  /*def cyclicNonterminals(g: Grammar) : Set[Nonterminal] = {   
+  /*def cyclicNonterminals(g: Grammar[T]) : Set[Nonterminal] = {   
     g.nonTerminals.toSet.filter(nt => reach(g, nt, nt))
   }  
 
-  def cnfToGrammar(cnfG: Grammar): Grammar = {
+  def cnfToGrammar(cnfG: Grammar[T]): Grammar[T] = {
     
-    def selfRecursive(nt: Nonterminal, g: Grammar): Boolean = {
+    def selfRecursive(nt: Nonterminal, g: Grammar[T]): Boolean = {
       g.nontermToRules(nt).exists(_.rightSide.contains(nt))        
     }
     
-    def isReplaceable(nt: Nonterminal, g: Grammar) = {
+    def isReplaceable(nt: Nonterminal, g: Grammar[T]) = {
       cnfNonterminals.contains(nt) && !selfRecursive(nt, g)
     }    
     //Inline all rules of the form N -> \alpha where N is a nonterminal created during conversion
     //optimal order of inlining is reverse topological order. But for simplicity we dont use that in the 
     //following code
-    val newg = Util.fixpoint((g: Grammar) => {      
+    val newg = Util.fixpoint((g: Grammar[T]) => {      
       //TODO: what if one rule for a nonterminal satisfies the property while the other doesn't ??
       val nontermsToInline = g.rules.collect {
         case rule@Rule(leftSide, rightSide) if isReplaceable(leftSide, g) &&
@@ -408,7 +408,7 @@ object CNFConverter {
     pullStartToTop(newg)
   }
   
-  def removeCNFNonterminals-old(cnfG: Grammar, rules: List[Rule]) : List[Rule] = {
+  def removeCNFNonterminals-old(cnfG: Grammar[T], rules: List[Rule]) : List[Rule] = {
     //Note: we cannot eliminate self-recursive non-terminals
     //so they are preserved in the rules
     def getSelfrecNonterms(rules: List[Rule]): Set[Nonterminal] = {

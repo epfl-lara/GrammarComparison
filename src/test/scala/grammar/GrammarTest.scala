@@ -19,7 +19,7 @@ class GrammarTest extends FlatSpec with ShouldMatchers {
   implicit val ectx = new EnumerationContext()
   implicit val eqctx = new EquivalenceCheckingContext()
 
-  def testEquivalence(g1: Grammar, g2: Grammar) = {
+  def testEquivalence(g1: Grammar[String], g2: Grammar[String]) = {
     new StudentGrammarEquivalenceChecker(g1).isEquivalentTo(g2)
   }
 

@@ -3,7 +3,7 @@ package grammar
 import java.io._
 /**
  * A set of parameters to the system.
- * Static parameters cannot be cannot be changed after an operation starts executing,
+ * Static parameters cannot be changed after an operation starts executing,
  * Dynamic parameters can be changed after the operation has started executing.
  * Basically, this serves as a knob that lets the user configure the system and also
  * abort operations after they have been issued

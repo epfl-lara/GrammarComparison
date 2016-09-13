@@ -10,7 +10,7 @@ import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import RepairResult._
 
-class ContextBasedSuperSetRepair(g: Grammar, ungenWord: Word, equivChecker: EquivalenceChecker)
+class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker: EquivalenceChecker[T])
 	(implicit gctx: GlobalContext, opctx: RepairContext) {
 
   sealed abstract class Permissibility
@@ -250,7 +250,7 @@ class ContextBasedSuperSetRepair(g: Grammar, ungenWord: Word, equivChecker: Equi
   }    
 
   def isRedundantRule(rule: Rule) = {
-    val newCnf = Grammar(g.start, g.rules.filterNot(_ == rule)).cnfGrammar    
+    val newCnf = Grammar[T](g.start, g.rules.filterNot(_ == rule)).cnfGrammar    
     if (!newCnf.rules.isEmpty) {
       val cykparser = new CYKParser(newCnf)
       val ctex = acceptedWords.find(x => !cykparser.parse(x))
@@ -318,7 +318,7 @@ class ContextBasedSuperSetRepair(g: Grammar, ungenWord: Word, equivChecker: Equi
             case (sym, `index`) => cand
             case (sym, _) => sym
           })
-          val candidateCNF = Grammar(g.start, ruleWOCtx :+ newContextRule).cnfGrammar 
+          val candidateCNF = Grammar[T](g.start, ruleWOCtx :+ newContextRule).cnfGrammar 
           val candParser = new CYKParser(candidateCNF)
           //check if candidateCNF does not accept the ungeneratable word
           //Here, we are using CYK parser, hence, this could be expensive

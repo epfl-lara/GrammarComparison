@@ -7,17 +7,18 @@ import language.postfixOps
 
 /**
  * Parses a sentential form belonging to a grammar.
+ * Requires the terminals in the grammar to be strings. Otherwise, we cannot parse a sentential form of the grammar.
  * Note to parse a word belonging to a grammar we can use CYK parser
  */
 class SententialFormParser extends RegexParsers {
   override type Elem = Char
   
   def oneSymbol(sym: Symbol) = sym match {
-    case t@Terminal(name) => name ^^ { case _ => t}
+    case t@Terminal(name: String) => name ^^ { case _ => t}
     case nt@Nonterminal(name) => name ^^ { case _ => nt}  
   }
   
-  def anySymbol(g: Grammar) = {       
+  def anySymbol(g: Grammar[String]) = {       
     val syms = (g.nonTerminals ++ g.terminals)
     syms.tail.foldLeft(oneSymbol(syms.head) : Parser[Symbol]) {
       case (acc, sym) =>
@@ -25,12 +26,12 @@ class SententialFormParser extends RegexParsers {
     }
   }
 
-  def sform(g: Grammar) = anySymbol(g)*
+  def sform(g: Grammar[String]) = anySymbol(g)*
 
   /**
    * Parses the steps of a leftmost derivation for a given grammar
    */
-  def parseSententialForms(lines: List[String], g: Grammar) = {
+  def parseSententialForms(lines: List[String], g: Grammar[String]) = {
 
     var linenum = 0
     var errstr = "";

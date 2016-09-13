@@ -15,7 +15,7 @@ object GNFUtilities {
   /**
    * This method will also handle epsilons
    */
-  def indirectLeftRecursiveNonterms(g: Grammar) = {
+  def indirectLeftRecursiveNonterms[T](g: Grammar[T]) = {
     val nullables = GrammarUtils.nullables(g)
     (new GraphUtil.DirectedGraph[Nonterminal] {
       def start = g.start
@@ -42,14 +42,14 @@ object GNFUtilities {
     }).sccs
   }
 
-  def hasIndirectLeftRecursion(g: Grammar) = {
+  def hasIndirectLeftRecursion[T](g: Grammar[T]) = {
     indirectLeftRecursiveNonterms(g).exists(_.size >= 2)
   }
 
   /**
    * assuming the grammar is in GNF form
    */
-  def firstNT(nt: Nonterminal, g: Grammar): List[Terminal] = {
+  def firstNT[T](nt: Nonterminal, g: Grammar[T]): List[Terminal] = {
     g.nontermToRules(nt).collect {
       case Rule(_, (t: Terminal) :: tail) => t
       case r @ Rule(_, (nt: Nonterminal) :: tail) =>
@@ -60,7 +60,7 @@ object GNFUtilities {
   /**
    * Checks if a grammar in GNF form is LL(2)
    */
-  def isGNFGrammarLL2(g: Grammar): Boolean = {
+  def isGNFGrammarLL2[T](g: Grammar[T]): Boolean = {
     var break = false
     g.nontermToRules.foreach {
       case (nt, ntrules) if !break =>
@@ -107,7 +107,7 @@ object GNFUtilities {
   /**
    * Performs left factorization, not really used anywhere
    */
-  def leftFactor(g: Grammar): Grammar = {
+  def leftFactor[T](g: Grammar[T]): Grammar[T] = {
 
     def factorOnce(rules: List[Rule]) = {
       var modRules = List[Rule]()
@@ -142,7 +142,7 @@ object GNFUtilities {
       rulesToCheck = newrules
       rulesTransformed ++= modrules
     }
-    Grammar(g.start, rulesTransformed)
+    Grammar[T](g.start, rulesTransformed)
   }
 
   /**
@@ -156,7 +156,7 @@ object GNFUtilities {
     }
 
     //substitute for epsilons
-    //val afterEpsilons = CNFConverter.removeEpsilonProductions(Grammar(nt, ntrules)).rules     
+    //val afterEpsilons = CNFConverter.removeEpsilonProductions(Grammar[T](nt, ntrules)).rules     
     //collect all left recursive rules
     val (leftRecur, rest) = ntrules.partition(isLeftRecursive)
     if (leftRecur.isEmpty)
@@ -183,7 +183,7 @@ object GNFUtilities {
    * The following method is not really used by the GNFConverter itself,
    * but by other clients. Eps. by the antlr parser
    */ /*
-  def removeIndirectLeftRecursion(g: Grammar)(implicit opctx: OperationContext): Grammar = {
+  def removeIndirectLeftRecursion(g: Grammar[T])(implicit opctx: OperationContext): Grammar[T] = {
     val indirectLeftRecurs = (new GraphUtil.DirectedGraph[Nonterminal] {
       def start = g.start
       def vertices = g.nonTerminals
@@ -274,7 +274,7 @@ object GNFUtilities {
       removeUnreachableRules _ andThen
         removeUnproductiveRules
     }
-    val transGrammar = Grammar(g.start, transRules)
+    val transGrammar = Grammar[T](g.start, transRules)
     //require(verifyNoIndirectRecursion(transGrammar))
     transGrammar
   }

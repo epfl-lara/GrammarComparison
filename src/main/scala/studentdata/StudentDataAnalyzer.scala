@@ -32,7 +32,7 @@ object StudentDataAnalyzer {
     val grammarDb = GrammarDatabase.readGrammarDatabase(
         new java.io.File("exercises-data/GrammarDatabase.xml"), "exercises-data/")
     
-    var seenQueries = Set[(Grammar,Int)]() //a map of student grammar and problem id  
+    var seenQueries = Set[(Grammar[String],Int)]() //a map of student grammar and problem id  
 
     //val trickyEvents = List(6) //3401,3139,7733)
     logfiles.foreach { lg =>

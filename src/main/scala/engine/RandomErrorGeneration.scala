@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 import scala.concurrent.util._
 import java.util.concurrent._
 
-class RandomErrorGeneration(g: Grammar, seed: Long) {
+class RandomErrorGeneration(g: Grammar[String], seed: Long) {
   val rand = new java.util.Random(seed)
   //also make sure we don't generate the same error again
   var errorData = Set(List[Int]()) //this is a number, pair or a triple 
@@ -38,7 +38,7 @@ class RandomErrorGeneration(g: Grammar, seed: Long) {
 
   def createErrors(level: Int, minErrLength: Int, maxErrLength: Int) = {
     val errgen = getErrgen(level)
-    var errg: Grammar = null
+    var errg: Grammar[String] = null
     var break = false
     var errLen = 0
     do {
@@ -54,7 +54,7 @@ class RandomErrorGeneration(g: Grammar, seed: Long) {
       }
     } while (!break)
     
-    val ops = (CNFConverter.removeUnproductiveRules _
+    val ops = (CNFConverter.removeUnproductiveRules[String] _
       andThen CNFConverter.removeUnreachableRules)
     (ops(errg), errLen)
   }
@@ -63,7 +63,7 @@ class RandomErrorGeneration(g: Grammar, seed: Long) {
     //randomly choose a rule and remove it from the grammar
     val ruleNum = rand.nextInt(g.rules.size)
     val rule = g.rules(ruleNum)        
-    (Grammar(g.start, g.rules.filterNot(_ == rule)), List(ruleNum))
+    (Grammar[String](g.start, g.rules.filterNot(_ == rule)), List(ruleNum))
   }
 
   lazy val rulesWithArity2 = g.rules.filter(_.rightSide.size > 2)
@@ -74,7 +74,7 @@ class RandomErrorGeneration(g: Grammar, seed: Long) {
     val rhsIndex = rand.nextInt(rule.rightSide.size)
     val newrule = Rule(rule.leftSide, Util.removeAtIndex(rule.rightSide, rhsIndex))
 
-    val errg = Grammar(g.start, g.rules.map {
+    val errg = Grammar[String](g.start, g.rules.map {
       case `rule` => newrule
       case rl => rl
     })
@@ -104,7 +104,7 @@ class RandomErrorGeneration(g: Grammar, seed: Long) {
     val newRules = CFGrammar.replace(errRules, Map(left -> newLeft)) //this is to avoid indirect left recursion,which is not supported by antlr
 
     val modrule = Rule(left, (right.take(rhsIndex) :+ newLeft) ++ right.drop(rhsIndex + 1))
-    val errg = Grammar(g.start, g.rules.map {
+    val errg = Grammar[String](g.start, g.rules.map {
       case `rule` => modrule
       case rl => rl
     } ++ newRules)

@@ -26,6 +26,8 @@ trait Parser {
  * Parse trees associated to rules in CNF
  */
 trait ParseTree
+case class Node(r: Rule, children: List[ParseTree]) extends ParseTree
+case class Leaf(t: Terminal) extends ParseTree
 /*object Node {
   object CNF {
     def apply(r: Rule, left: ParseTree, right: ParseTree): Node = Node(r, left :: right :: Nil)
@@ -35,7 +37,6 @@ trait ParseTree
     }
   }
 }*/
-case class Node(r: Rule, children: List[ParseTree]) extends ParseTree
 /*object Leaf {
   object CNF {
     def apply(r: Rule, t: Terminal): Node = Node(r, List(Leaf(t)))
@@ -46,7 +47,6 @@ case class Node(r: Rule, children: List[ParseTree]) extends ParseTree
   }
 }
 */
-case class Leaf(t: Terminal) extends ParseTree
 
 object ParseTreeUtils {
 
@@ -75,7 +75,7 @@ object ParseTreeUtils {
   }
 }
 
-class CYKParser(G: Grammar) extends Parser {
+class CYKParser[T](G: Grammar[T]) extends Parser {
   require(isInCNF(G, false))
 
   //create two mappings from substrings to CYK parse table entry   

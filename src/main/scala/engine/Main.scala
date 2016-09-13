@@ -25,7 +25,7 @@ import GrammarReaders._
 
 object Main {
 
-  def generateUsingRAGenerator(g: Grammar) = {
+  def generateUsingRAGenerator[T](g: Grammar[T]) = {
 
     implicit val gctx = new GlobalContext()
     implicit val enumctx = new EnumerationContext()
@@ -279,7 +279,7 @@ object Main {
     }
   }
 
-  def ambiguityTestDriver(g: Grammar)(implicit gctx: GlobalContext,
+  def ambiguityTestDriver(g: Grammar[String])(implicit gctx: GlobalContext,
     ambctx: AmbiguityContext,
     ectx: EnumerationContext) = {
     val ambChecker = new AmbiguityChecker(g)
@@ -363,7 +363,7 @@ object Main {
     }
   }
 
-  def equivTestDriver(ig1: Grammar, ig2: Grammar)(implicit gctx: GlobalContext,
+  def equivTestDriver(ig1: Grammar[String], ig2: Grammar[String])(implicit gctx: GlobalContext,
     eqctx: EquivalenceCheckingContext,
     ectx: EnumerationContext,
     pctx: ParseContext) {

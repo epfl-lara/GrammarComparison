@@ -22,9 +22,9 @@ class GrammarParser extends RegexParsers {
    */
   def regId = symbol ^^ {
     case name if name == "\"\"" => RegEmpty()
-    case name => RegId(name)
+    case name => new RegId(name)
   }
-  def nontermRegId = nontermSymbol ^^ { case name => RegId(name) }
+  def nontermRegId = nontermSymbol ^^ { case name => new RegId(name) }
 
   //Precedence: () precedes unary operators,*,?,| precedes '.' precedes '|'
   def atom = regId | ("(" ~> regExp <~ ")")
@@ -157,7 +157,7 @@ class GrammarParser extends RegexParsers {
     } else {
       //start symbol is the nonterminal in the first rule by convention
       val startSymbol = rules(0).leftSide
-      (Some(BNFGrammar(startSymbol, rules)), errstr)
+      (Some(BNFGrammar[String](startSymbol, rules)), errstr)
     }
   }
 }

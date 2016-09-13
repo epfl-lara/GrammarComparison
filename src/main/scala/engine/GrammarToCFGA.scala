@@ -11,7 +11,7 @@ import grammar.CFGrammar._
 
 object GrammarToCFGA {
 
-  def grammarToCFGA(g: Grammar, filename: String) {            
+  def grammarToCFGA(g: Grammar[String], filename: String) {            
     val pr = new PrintWriter(new FileOutputStream(new File(filename)))
     val st = g.start 
     val nts = g.start +: (g.nonTerminals.filterNot(_ == st))    

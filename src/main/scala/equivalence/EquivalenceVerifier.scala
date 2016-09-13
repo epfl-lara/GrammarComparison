@@ -13,7 +13,7 @@ import scala.collection.mutable.LinkedHashSet
 //TODO: is it necessary to change the condition of Btrans to l+2 instead of L 
 //and make each of the right-hand-sides atmost 3 non-terminals 
 object EquivalenceVerfier {
-  var smallestGrammars = List[(Grammar, Grammar)]()
+  var smallestGrammars = List[(Grammar[_], Grammar[_])]()
   var smallestSize: Option[Int] = None
 
   type Operator = (SententialForms, SententialForms, Terminal) => Relation
@@ -53,7 +53,7 @@ object EquivalenceVerfier {
     }
   }
 
-  def first(sf: SententialForm, g: Grammar): List[Terminal] = sf match {
+  def first[T](sf: SententialForm, g: Grammar[T]): List[Terminal] = sf match {
     case (t: Terminal) :: tail => List(t)
     case (nt: Nonterminal) :: tail => GNFUtilities.firstNT(nt, g)
     case (prnt: PRNonterminal) :: tail => List(prnt.pr)
@@ -72,7 +72,7 @@ object EquivalenceVerfier {
     sforms.map(prex ++ _)
   }
 
-  def getRightSides(sym: Symbol, g: Grammar): SententialForms = sym match {
+  def getRightSides[T](sym: Symbol, g: Grammar[T]): SententialForms = sym match {
     case nt: Nonterminal => rightSides(nt, g)
     case PRNonterminal(nt, p) => rightSides(nt, g).filter(_.head == p)
     case gv @ GroupedVariable(_) => gv.splitForms.flatMap {
@@ -87,7 +87,7 @@ object EquivalenceVerfier {
    * This is defined only if the grammar is in GNF.
    * Track the prefix (expanded) and suffix (unexpanded) parts
    */
-  def derivative(inputWord: List[Terminal], isf: SententialForm, g: Grammar): List[(SententialForm, SententialForm)] = {
+  def derivative[T](inputWord: List[Terminal], isf: SententialForm, g: Grammar[T]): List[(SententialForm, SententialForm)] = {
 
     def derivativeRec(word: List[Terminal], prefix: SententialForm, suffix: SententialForm): List[(SententialForm, SententialForm)] = {
       if (word.isEmpty)
@@ -119,7 +119,7 @@ object EquivalenceVerfier {
    * symbols that we not used in the derivative computation from the those
    * that were used
    */
-  def derivativeWithCommonSuffix(word: Word, sform: SententialForm, g: Grammar) = {
+  def derivativeWithCommonSuffix[T](word: Word, sform: SententialForm, g: Grammar[T]) = {
     derivative(word, sform, g) match {
       case List() => (List(), List(), List())
       case dervs =>
@@ -132,7 +132,7 @@ object EquivalenceVerfier {
     }
   }
 
-  def derivatives(word: Word, sforms: SententialForms, g: Grammar) = {
+  def derivatives[T](word: Word, sforms: SententialForms, g: Grammar[T]) = {
     sforms.map(sform => derivativeWithCommonSuffix(word, sform, g))
   }
 
@@ -141,7 +141,7 @@ object EquivalenceVerfier {
    * that without extended symbols.
    * Note: the resulting set of sentential forms could be huge
    */
-  def removeExtendedSymbols(sform: SententialForm, g: Grammar): List[SententialForm] = {
+  def removeExtendedSymbols[T](sform: SententialForm, g: Grammar[T]): List[SententialForm] = {
     sform.foldLeft(List[SententialForm](List[Symbol]())) {
       case (acc, s @ (Terminal(_) | Nonterminal(_))) =>
         concatSuffix(acc, List(s))
@@ -155,7 +155,7 @@ object EquivalenceVerfier {
    * procedure for LL(1) grammars, so that they are LL(2) after removing epsilons.
    * TODO: the special conversion worsens results when one of the grammars is not LL(1) :-( why ?   
    */
-  def toGNF(g1: Grammar, g2 : Grammar)(implicit gctx: GlobalContext) = {
+  def toGNF[T](g1: Grammar[T], g2 : Grammar[T])(implicit gctx: GlobalContext) = {
 	if(GrammarUtils.isLL1(g1) && GrammarUtils.isLL1(g2)){
 	  (GNFConverter.toGNF(LLEpslionEliminator.eliminateEpsilons(g1)),
 	      GNFConverter.toGNF(LLEpslionEliminator.eliminateEpsilons(g2)))
@@ -214,7 +214,7 @@ object EquivalenceVerfier {
   }
 }
 
-class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
+class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
 	(implicit gctx: GlobalContext, 
 	    opctx: EquivalenceVerificationContext,
 	    enumctx: EnumerationContext) {
@@ -240,17 +240,17 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
     //union of g1 and g2
     val newstart = Nonterminal(utils.Util.freshName(Some("S")))
     val newrules = (Rule(newstart, List(g1.start)) +: g1.rules) ++ (Rule(newstart, List(g2.start)) +: g2.rules)
-    val gram = Grammar(newstart, newrules)
+    val gram = Grammar[T](newstart, newrules)
     //inline the right-sides of the start non-terminals as they are unit productions
     val enumrules = g1.nontermToRules(g1.start).map(rl => Rule(newstart, rl.rightSide)) ++
       g2.nontermToRules(g2.start).map(rl => Rule(newstart, rl.rightSide)) ++
       g1.rules ++ g2.rules
-    val enumGram = CNFConverter.simplify(Grammar(newstart, enumrules))
+    val enumGram = CNFConverter.simplify(Grammar[T](newstart, enumrules))
     (gram, enumGram)
   }
   val noTests = opctx.testsForVerification
   val maxSize = opctx.maxSizeForVerification
-  val wordGen = new SizeBasedRandomAccessGenerator(genum, maxSize)
+  val wordGen = new SizeBasedRandomAccessGenerator[T](genum, maxSize)
   val maxMinWord = {
     //'l' of the hopcroft algorithm
     nonterminals(genum).map(wordGen.getMinWord(_).get).maxBy(_.size)
@@ -278,7 +278,7 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
     minword
   }
 
-  def genWords(wordGen: SizeBasedRandomAccessGenerator, nt: Nonterminal, nos: Int): List[Word] = {
+  def genWords(wordGen: SizeBasedRandomAccessGenerator[T], nt: Nonterminal, nos: Int): List[Word] = {
     //note we are using a sequential enumerator here
     val enums = (1 to maxSize).map { wordGen.getSeqEnumerator(nt, _, nos) }.toList
     var words = List[Word]()
@@ -316,8 +316,8 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
       //unfortunately, adding support for enumerating sentential forms is hard
       //because the enumerator is not sufficiently parametrized.
       //TODO: The main overhead is re-evaluating the word-counter, can this be avoided ?
-      val ng = Grammar(nstart, nrules)
-      val wordGen = new SizeBasedRandomAccessGenerator(ng, maxSize)
+      val ng = Grammar[T](nstart, nrules)
+      val wordGen = new SizeBasedRandomAccessGenerator[T](ng, maxSize)
       genWords(wordGen, nstart, nos)
     }
   }
@@ -905,7 +905,7 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
   /**
    * Mainly used for debugging
    */
-  def checkRelationsBetweenGrammars: Boolean = {
+  /*def checkRelationsBetweenGrammars: Boolean = {
     implicit val equivctx = new EquivalenceCheckingContext()
     implicit val parsectx = new ParseContext()
     
@@ -924,7 +924,7 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
       printDebugMessage("Verifier", "Input grammars are not equivalent")
       false
     }
-  }
+  }*/
 
   def proveEquivalence(): Option[Boolean] = {
     //for stats
@@ -934,9 +934,9 @@ class EquivalenceVerifier(ig1: Grammar, ig2: Grammar)
     val startset1 = List(List(g1.start))
     val startset2 = List(List(g2.start))
     if (opctx.debugEquivVerifier > 0) {
-      if (opctx.debugEquivVerifier > 1) {
+      /*if (opctx.debugEquivVerifier > 1) {
         checkRelationsBetweenGrammars
-      }
+      }*/
       printDebugMessage("Gr1", g1.toString)
       printDebugMessage("Gr2", g2.toString)
       printDebugMessage("Start", (g1.start, g2.start).toString)

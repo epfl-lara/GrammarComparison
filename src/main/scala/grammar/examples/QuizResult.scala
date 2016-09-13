@@ -10,7 +10,7 @@ object QuizResult {
   val correct = 0
 }
 
-case class AnnotatedGrammar(grammar: BNFGrammar, grade: Option[Float], comment: Option[String])(quizResult: QuizResult, index: Option[Int]) {
+case class AnnotatedGrammar(grammar: BNFGrammar[String], grade: Option[Float], comment: Option[String])(quizResult: QuizResult, index: Option[Int]) {
   import QuizResult._
   def correct(b: Boolean): AnnotatedGrammar = this grade (if(b) quizResult.MAX_GRADE else 0)
   def grade(i : Float): AnnotatedGrammar = { val res = this.copy(grade=Some(i))(quizResult, index); if(index.nonEmpty) quizResult.student_grammars(index.get) = res; res}
@@ -26,15 +26,15 @@ abstract class QuizResult { quizResult =>
   implicit def MAX_GRADE: Int
  
   def quizName : String
-  def reference : BNFGrammar
+  def reference : BNFGrammar[String]    
   
-  protected def add(g: BNFGrammar): AnnotatedGrammar = {
+  protected def add(g: BNFGrammar[String]): AnnotatedGrammar = {
     val index = student_grammars.length
     val result = AnnotatedGrammar(g, None, None)(this, Some(index))
     student_grammars += result
     result
   }
-  implicit class RichGrammar(g: BNFGrammar) {
+  implicit class RichGrammar(g: BNFGrammar[String]) {
     def annotated = AnnotatedGrammar(g, None, None)(quizResult, None)
   }
 }

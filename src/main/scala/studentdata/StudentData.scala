@@ -10,12 +10,12 @@ import grammar.EBNFGrammar._
 object StudentData {
 
   sealed abstract class Event
-  case class doCheck(val eventid: Int, val time: String, exid: Int, probId: Int, code: Option[BNFGrammar]) extends Event {
+  case class doCheck(val eventid: Int, val time: String, exid: Int, probId: Int, code: Option[BNFGrammar[String]]) extends Event {
     //    override def toString(){
     //      
     //    }
   }
-  case class checkAmbiguity(val eventid: Int, val time: String, code: Option[BNFGrammar]) extends Event
+  case class checkAmbiguity(val eventid: Int, val time: String, code: Option[BNFGrammar[String]]) extends Event
   case class CEx(val eventid: Int, val time: String) extends Event
   case class EquivProved(val eventid: Int, val time: String) extends Event
   case class AmbiguityEx(val eventid: Int, val time: String) extends Event

@@ -7,14 +7,14 @@ import scala.io.StdIn
 
 object GrammarWriter {
 
-  def dumpPrettyGrammar(filename: String, g: Grammar) = {    
+  def dumpPrettyGrammar[T](filename: String, g: Grammar[T]) = {    
     dumpGrammar(filename, CFGrammar.renameAutoSymbols(g))
   }
   
-  def dumpGrammar(file: File, g: BNFGrammar): Unit = {
+  def dumpGrammar[T](file: File, g: BNFGrammar[T]): Unit = {
     dumpFile(file, g)
   }
-  def dumpGrammar(file: File, g: Grammar): Unit = {
+  def dumpGrammar[T](file: File, g: Grammar[T]): Unit = {
     dumpFile(file, g)
   }
   def dumpFile(file: File, content: Any): Unit = {
@@ -24,7 +24,7 @@ object GrammarWriter {
     pw.close()
   }
   
-  def dumpGrammar(filename: String, g: Grammar) {
+  def dumpGrammar[T](filename: String, g: Grammar[T]) {
     val fullname = filename + ".gram"
     dumpGrammar(new File(fullname), g)
     println("Dumped grammar to file: " + fullname)    

@@ -14,7 +14,7 @@ import org.antlr.runtime.ANTLRStringStream
 import java.lang.reflect.Constructor
 import org.antlr.runtime.tree.CommonTree
 
-class AntlrParserInterpreted(ing: Grammar)
+class AntlrParserInterpreted(ing: Grammar[String])
 	(implicit gctx: GlobalContext, opctx: ParseContext) extends Parser {
 
   val antlrg = {
@@ -23,10 +23,10 @@ class AntlrParserInterpreted(ing: Grammar)
     //create a new start symbol    
     val ns = Nonterminal(Util.freshName(Some(g.start.name)))
     val nrs = Rule(ns, List(g.start))
-    val ng = Grammar(ns, nrs +: g.rules)
+    val ng = Grammar[String](ns, nrs +: g.rules)
 
     //make non-terminals start with lower case letters, if they don't already
-    val oldnts = (ng.nonTerminals.map(_.name) ++ ng.terminals.map(_.name)).toSet
+    val oldnts = (ng.nonTerminals.map(_.name) ++ ng.terminals.map(_.toString)).toSet
     val replaceMap = ng.nonTerminals.collect {
       case ont @ Nonterminal(name) if (name(0).isUpper) =>
         val newname = name(0).toLower + name.substring(1)
@@ -58,7 +58,7 @@ class AntlrParserInterpreted(ing: Grammar)
     new org.antlr.v4.tool.Grammar(antlrstr)
   }
 
-  def convertGrammarForAntlrParsing(ig: Grammar): Grammar = {
+  def convertGrammarForAntlrParsing(ig: Grammar[String]): Grammar[String] = {
     //first remove unproductive and unreachable symbols
     val g = CNFConverter.simplify(ing)
     //(a) there should be no indirect left recursion   

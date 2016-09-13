@@ -21,13 +21,13 @@ object GeneratorBottomup {
    * number - number of strings to be generated
    * The 'separator' argument is only used for printing
    */
-  def apply(grammar: Grammar, maxWords: Int, debug : Boolean = false): List[List[Terminal]] = {
+  def apply(grammar: Grammar[_], maxWords: Int, debug : Boolean = false): List[List[Terminal]] = {
     val g = new GenerationScheme(grammar, maxWords, debug)
     val r = g.run
     r
   }
 
-  class GenerationScheme(grammar: Grammar, maxWords: Int, debug : Boolean) {
+  class GenerationScheme(grammar: Grammar[_], maxWords: Int, debug : Boolean) {
 
     type Word = List[Terminal]
     type Words = List[Word]
@@ -97,7 +97,7 @@ object GeneratorBottomup {
      * Sorts nonterminals in topological order.
      * TODO: make this more efficient using graphs and dfs algorithm
      */
-    def nonterminalsInTopologicalOrder(grammar: Grammar): List[Nonterminal] = {
+    def nonterminalsInTopologicalOrder[T](grammar: Grammar[T]): List[Nonterminal] = {
 
       def insert(index: Int, list: List[Nonterminal], s: Nonterminal) = {
         var i = 0

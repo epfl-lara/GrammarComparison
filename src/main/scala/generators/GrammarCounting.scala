@@ -11,7 +11,7 @@ object RandomAccessGeneratorUtil {
    * TODO: this can be more efficiently implemented using a
    * backward shortest path
    */
-  def basecaseOfNonterminals(g: Grammar): Map[Nonterminal, Rule] = {
+  def basecaseOfNonterminals(g: Grammar[_]): Map[Nonterminal, Rule] = {
     var basecase = Map[Nonterminal, Rule]()
     var continue = true
     while (continue) {
@@ -40,7 +40,7 @@ object RandomAccessGeneratorUtil {
    * Requires the grammar to not
    * have unproductive symbols
    */
-  def minWords(g: Grammar) = {
+  def minWords(g: Grammar[_]) = {
     var minwordMap = Map[Symbol, Word]()
     var visited = Set[Symbol]() // this will only have non-terminals
 
@@ -80,7 +80,7 @@ object RandomAccessGeneratorUtil {
   
   val one = BigInt(1)
   val zero = BigInt(0)
-  def wordCountOfNonterminals(g: Grammar): Map[Nonterminal, BigInt] = {
+  def wordCountOfNonterminals(g: Grammar[_]): Map[Nonterminal, BigInt] = {
     var wordCount = Map[Nonterminal, BigInt]()
     var continue = true
     while (continue) {
@@ -114,7 +114,7 @@ object RandomAccessGeneratorUtil {
    * Note that this number is always bounded if epsilons are also considered as terminals.
    * Note: in this class 'Int' data types are for word sizes and 'BigInt' for number of words.
    */
-  class WordCounter(g: Grammar, size: Int) {
+  class WordCounter(g: Grammar[_], size: Int) {
     val nontermToIndex = g.nontermsInPostOrder.zipWithIndex.toMap
     val indexToNonterms = nontermToIndex.map { case (nt, i) => (i, nt) }.toMap
 
@@ -257,7 +257,7 @@ object RandomAccessGeneratorUtil {
     }
   }  
 
-  def firstMismatchSize(g1: Grammar, g2: Grammar, maxSize: Int): Option[Int] = {
+  def firstMismatchSize(g1: Grammar[_], g2: Grammar[_], maxSize: Int): Option[Int] = {
     val wc1 = new WordCounter(g1, maxSize)
     val wc2 = new WordCounter(g2, maxSize)
     var foundSize: Option[Int] = None

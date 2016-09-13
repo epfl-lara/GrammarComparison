@@ -20,17 +20,17 @@ object RandomAccessGenerator {
  * This generator computes rules and bounds dynamically.
  * 'wordSize' is the maximum size of the word that has to be generated
  */
-class SizeBasedRandomAccessGenerator(inG: Grammar, wordSize: Int)
+class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
 	(implicit gctx: GlobalContext, opctx: EnumerationContext) {
   import RandomAccessGenerator._
   import RandomAccessGeneratorUtil._
 
   //remove unproductive rules and reduce arity
   import CNFConverter._
-  private val grammar = (simplify _ andThen reduceArity)(inG)
+  private val grammar = (simplify[T] _ andThen reduceArity)(inG)
 
-  def reduceArity(inG: Grammar): Grammar = {
-    Grammar(inG.start, inG.rules.flatMap(reduceArityOfRule))
+  def reduceArity(inG: Grammar[T]): Grammar[T] = {
+    Grammar[T](inG.start, inG.rules.flatMap(reduceArityOfRule))
   }
 
   def reduceArityOfRule(rule: Rule): List[Rule] = {

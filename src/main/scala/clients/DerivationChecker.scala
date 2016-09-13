@@ -15,7 +15,7 @@ object DerivationChecker {
   case class WrongStep(from: SententialForm, to: SententialForm, msg: String) extends DerivationFeedback
   case class Other(msg: String) extends DerivationFeedback
   
-  def checkLeftMostDerivation(word: List[Terminal], steps: List[SententialForm], g: Grammar): DerivationFeedback = {
+  def checkLeftMostDerivation[T](word: List[Terminal], steps: List[SententialForm], g: Grammar[T]): DerivationFeedback = {
     if (steps.isEmpty) {
       Other("No derivation is given")
     } else {

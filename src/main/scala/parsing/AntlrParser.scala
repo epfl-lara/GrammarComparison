@@ -14,7 +14,11 @@ import org.antlr.runtime.ANTLRStringStream
 import java.lang.reflect.Constructor
 import org.antlr.runtime.tree.CommonTree
 
-class AntlrParser(g: Grammar)(implicit opctx: ParseContext) extends Parser {
+/**
+ * As of now this parser can be used only with grammar where terminals are strings.
+ * Because translation to antlr syntax requires conversion to strings.
+ */
+class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Parser {
 
   var lexerClass: Class[_] = null
   var parserClass: Class[_] = null
@@ -27,10 +31,10 @@ class AntlrParser(g: Grammar)(implicit opctx: ParseContext) extends Parser {
     //create a new start symbol    
     val ns = Nonterminal(Util.freshName(Some(g.start.name)))
     val nrs = Rule(ns, List(g.start))
-    val ng = Grammar(ns, nrs +: g.rules)
+    val ng = Grammar[String](ns, nrs +: g.rules)
 
     //make non-terminals start with lower case letters, if they don't already
-    val oldnts = (ng.nonTerminals.map(_.name) ++ ng.terminals.map(_.name)).toSet
+    val oldnts = (ng.nonTerminals.map(_.name) ++ ng.terminals.map(_.toString)).toSet
     val replaceMap = ng.nonTerminals.collect {
       case ont @ Nonterminal(name) if (name(0).isUpper) =>
         val newname = name(0).toLower + name.substring(1)

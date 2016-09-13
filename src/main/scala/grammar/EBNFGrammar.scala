@@ -42,7 +42,27 @@ object EBNFGrammar {
         re.toString()+"?"
     }
   }   
-  case class RegId(name: String) extends RegExp {
+  
+  /**
+   * A generic identifier class, for  allowing the content to be anything.
+   * We are loosing typing here for programming convenience. 
+   * But, this loss of typing is not visible at the user level.
+   * Uses value equality
+   */
+  class GenericRegId(val obj: Any) extends RegExp {
+    override def hashCode = obj.hashCode()
+    override def equals(other: Any) = other match {
+      case rid : GenericRegId => rid.obj  == obj
+      case _ => false
+    }
+    override def toString = obj.toString
+  }
+  
+  /**
+   * This is the class that would be created for non-terminals, and
+   * terminals parsed from a string. This just does some pretty printing.
+   */
+  class RegId(name: String) extends GenericRegId(name) {     
     override def toString = {
       if(name.matches("""([^\s\|\*\+\(\)\?'])+""")) name
       else "'"+name+"'"
@@ -52,11 +72,14 @@ object EBNFGrammar {
     override def toString = "\"\""      
   }
       
-  case class BNFRule(leftSide: RegId, rightSide: RegExp) {    
+  case class BNFRule(leftSide: GenericRegId, rightSide: RegExp) {    
     override def toString = leftSide + " -> " + rightSide.toString()    
   }
   
-  case class BNFGrammar(start: RegId, rules : List[BNFRule]) {
+  /**
+   * The type parameter represents the type of the terminals
+   */
+  case class BNFGrammar[T](start: GenericRegId, rules : List[BNFRule]) {
     override def toString = rules.mkString("\n")
     
     def toHTMLString = {      
@@ -64,5 +87,5 @@ object EBNFGrammar {
     }
     
     lazy val cfGrammar = ebnfToGrammar(this)
-  }
+  }  
 }

@@ -17,10 +17,6 @@ import scala.collection.mutable.MultiMap
 import scala.collection.mutable.HashMap
 
 object RepairResult {
-  //final val defaultAdd = "\nPerhaps you could add one of the following:\n"
-  //final val defaultAddAll = "\nPerhaps you could add the following rules:\n"
-  //final val defaultRemove = "\nPerhaps you should remove the following rules:\n"
-
   sealed trait CNFFeedback
   sealed trait GrammarFeedback
   sealed trait BNFFeedback
@@ -57,7 +53,7 @@ object RepairResult {
     override def toString = " Expand \n" + rulesToStr(olds) + "\n by replacing it by \n" + rulesToStr(news)
   }
 
-  def cnfToGrammarFeedbacks(oldg: Grammar, newg: Grammar, cnfFBs: List[CNFFeedback]) = cnfFBs map {
+  def cnfToGrammarFeedbacks[T](oldg: Grammar[T], newg: Grammar[T], cnfFBs: List[CNFFeedback]) = cnfFBs map {
     case CNFAdd(rules) =>      
       val newrules = CNFConverter.removeCNFNonterminals(newg, rules)
       AddAllRules(newrules)

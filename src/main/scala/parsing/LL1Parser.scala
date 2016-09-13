@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 import grammar.GrammarUtils
 import grammar.GlobalContext
 
-class LL1Parser(g : Grammar) extends Parser {
+class LL1Parser[T](g : Grammar[T]) extends Parser {
   case class EndOfRule(r: Rule)
 
   def parse(s: List[Terminal])(implicit opctx: GlobalContext): Boolean = {

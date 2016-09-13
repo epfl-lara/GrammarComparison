@@ -6,7 +6,7 @@ import grammar.utils._
 
 object GrammarUtils {
 
-  def nullables(g: Grammar): Set[Nonterminal] = {
+  def nullables[T](g: Grammar[T]): Set[Nonterminal] = {
     var nullable = Set.empty[Nonterminal]
     val nonTerminals = g.nonTerminals 
     Util.fixpoint {
@@ -25,7 +25,7 @@ object GrammarUtils {
     }(Set.empty[Nonterminal])
   }
 
-  def nullableFirstFollow(g: Grammar) 
+  def nullableFirstFollow[T](g: Grammar[T]) 
   	: (Set[Symbol], Map[Symbol, Set[Terminal]], Map[Symbol, Set[Terminal]]) = {
     
     val nonTerminals = g.rules.map(_.leftSide).distinct
@@ -73,7 +73,7 @@ object GrammarUtils {
   /**
    * Checks if a grammar is in LL(1)
    */
-  def isLL1(g: Grammar): Boolean = {     
+  def isLL1[T](g: Grammar[T]): Boolean = {     
     (isLL1WithFeedback(g) == InLL1())        
   }
 
@@ -103,7 +103,7 @@ object GrammarUtils {
     }
   }
 
-  def isLL1WithFeedback(g: Grammar): LL1Feedback = {
+  def isLL1WithFeedback[T](g: Grammar[T]): LL1Feedback = {
     val (nullable, first, follow) = nullableFirstFollow(g)
     val nonTerminals = g.nonTerminals
 
@@ -146,7 +146,7 @@ object GrammarUtils {
     InLL1()
   }
 
-  def postOrder(g: Grammar): List[Nonterminal] = {
+  def postOrder[T](g: Grammar[T]): List[Nonterminal] = {
     var visited = Set[Nonterminal](g.start)
     var order = List[Nonterminal]()
 
@@ -199,8 +199,8 @@ object GrammarUtils {
       .replaceAll(" ", ""), "")
   }
 
-  def createAccFile(g: Grammar): String = {
-    val tokens = (for (terminal <- g.terminals if terminal.name.length > 1 || terminal.name == "\"") yield terminal -> ("T" + clean(terminal.name))).toMap
+  def createAccFile[T](g: Grammar[T]): String = {
+    val tokens = (for (terminal <- g.terminals if terminal.toString.length > 1 || terminal.toString == "\"") yield terminal -> ("T" + clean(terminal.toString))).toMap
 
     var result = "%token " + join(tokens.values.toSeq, ", ") + ";\n";
 
@@ -213,7 +213,7 @@ object GrammarUtils {
       val rules = nontermRules._2
 
       result += nonterminalmap(nonterm) + " : " +
-        join(rules.map(rule => if (rule.rightSide.isEmpty) "empty" else join(rule.rightSide.map { case s: Terminal => tokens.getOrElse(s, "'" + s.name + "'") case n: Nonterminal => nonterminalmap(n) case s => s.toUniqueString }, " ")), " | ") + " ;\n";
+        join(rules.map(rule => if (rule.rightSide.isEmpty) "empty" else join(rule.rightSide.map { case s: Terminal => tokens.getOrElse(s, "'" + s.toString + "'") case n: Nonterminal => nonterminalmap(n) case s => s.toUniqueString }, " ")), " | ") + " ;\n";
     }
     result
   }
@@ -223,10 +223,10 @@ object GrammarUtils {
   import grammar.examples._
   import java.io._
   import EBNFGrammar._
-  def export(c: BNFGrammar, name: String): Unit = {
+  def export(c: BNFGrammar[String], name: String): Unit = {
     export(ebnfToGrammar(c), name)
   }
-  def export(c: Grammar, name: String): Unit = {
+  def export[T](c: Grammar[T], name: String): Unit = {
     def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
       val p = new java.io.PrintWriter(f)
       try { op(p) } finally { p.close() }

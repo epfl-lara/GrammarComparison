@@ -20,7 +20,7 @@ object LLEpslionEliminator {
     freshSym
   }
 
-  def removeEpsilonProductions(g: Grammar) = {
+  def removeEpsilonProductions[T](g: Grammar[T]) = {
 
     val (nullables, first, follow) = GrammarUtils.nullableFirstFollow(g)
 
@@ -115,15 +115,15 @@ object LLEpslionEliminator {
     }
     //add back the epsilon for the start symbol again
     if (nullables(g.start)) {
-      Grammar(g.start, Rule(g.start, List()) +: newRules)
+      Grammar[T](g.start, Rule(g.start, List()) +: newRules)
     } else
-      Grammar(g.start, newRules)
+      Grammar[T](g.start, newRules)
   }
 
   /**
    * Remove non-terminals that generate only epsilon.
    */
-  def removeEmptyNonterminals(igram: Grammar) = {
+  def removeEmptyNonterminals[T](igram: Grammar[T]) = {
     var changed = false
     var g = igram
     do {
@@ -138,12 +138,12 @@ object LLEpslionEliminator {
         case r @ _ =>
           r
       }
-      g = Grammar(g.start, nrules)
+      g = Grammar[T](g.start, nrules)
     } while (changed)
     g
   }
 
-  def removeFirstNullables(g: Grammar) = {
+  def removeFirstNullables[T](g: Grammar[T]) = {
 
     val (nullables, first, follow) = GrammarUtils.nullableFirstFollow(g)
 
@@ -185,13 +185,13 @@ object LLEpslionEliminator {
       case sym @ _ =>
         throw new IllegalStateException("A nullable termainal ? " + sym)
     }
-    Grammar(g.start, (transRulesMap.values.flatten.toList ++ newrules))
+    Grammar[T](g.start, (transRulesMap.values.flatten.toList ++ newrules))
   }
 
-  def eliminateEpsilons(g: Grammar): Grammar = {
+  def eliminateEpsilons[T](g: Grammar[T]): Grammar[T] = {
     require(GrammarUtils.isLL1(g))
     
-     val dumpGrammar = (title: String) => (g: Grammar) => {
+     val dumpGrammar = (title: String) => (g: Grammar[T]) => {
       println(title + " phase: ");
       println("----------------");
       println(g);
@@ -200,8 +200,8 @@ object LLEpslionEliminator {
     }
 
     val transformations = (
-      CNFConverter.addStartSymbol _
-      andThen CNFConverter.simplify
+      CNFConverter.addStartSymbol[T] _
+      andThen CNFConverter.simplify[T]
       andThen removeEmptyNonterminals
       //andThen dumpGrammar("removeEmptyNonterminals")
       //reducing Arity will probably optimize parts of the algorithm

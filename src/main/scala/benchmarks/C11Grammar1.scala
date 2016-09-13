@@ -11,7 +11,7 @@ import grammar.CNFConverter._
 abstract class Benchmark { 
   def benchmarkName : String
   def benchmarkSource  : String
-  def ebnfGrammar : BNFGrammar  
+  def ebnfGrammar : BNFGrammar[String]
 }
 
 object C11Grammar1 extends Benchmark {

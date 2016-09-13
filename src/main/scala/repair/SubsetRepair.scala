@@ -18,13 +18,13 @@ import scala.annotation.tailrec
 /**
  * Takes a reference grammar in any form
  */
-class SubsetRepair(equivChecker: EquivalenceChecker)
+class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
 	(implicit gctx: GlobalContext, opctx: RepairContext) {
   import RepairResult._  
 
   val cnfRef = equivChecker.refg.cnfGrammar 
 
-  def makeParsable(g: Grammar, unparsableWord: List[Terminal]) = {
+  def makeParsable(g: Grammar[T], unparsableWord: List[Terminal]) = {
 
     if (g.rules.isEmpty) {
       throw new IllegalStateException("No rules found in the input grammar to repair!!")

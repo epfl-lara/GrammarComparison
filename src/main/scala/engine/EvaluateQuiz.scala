@@ -19,7 +19,7 @@ object EvaluateQuiz {
     eqctx: EquivalenceCheckingContext,
     verictx: EquivalenceVerificationContext) {
     
-    def proveEquivalence(g1: Grammar, g2: Grammar) = {
+    def proveEquivalence(g1: Grammar[String], g2: Grammar[String]) = {
       println("Trying to prove equivalence...")
       val verifier = new EquivalenceVerifier(g1, g2)
       verifier.proveEquivalence() match {

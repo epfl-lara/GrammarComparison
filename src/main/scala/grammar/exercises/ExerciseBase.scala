@@ -59,7 +59,7 @@ object ExerciseType {
     allExercises.find(_.key == key)
   }
 
-  def parseWord(wordStrs: List[String], refGrammar: BNFGrammar): Either[String, Word] = {
+  def parseWord(wordStrs: List[String], refGrammar: BNFGrammar[String]): Either[String, Word] = {
     val (words, errmsg) = (new SententialFormParser()).parseSententialForms(
       wordStrs.toList, refGrammar.cfGrammar)
     if (!errmsg.isEmpty())
@@ -81,9 +81,9 @@ case class GrammarEntry(
   id: Int,
   name: String, // Title
   desc: String,
-  reference: BNFGrammar,
+  reference: BNFGrammar[String],
   word: Option[Word],
-  initGrammar: Option[BNFGrammar],
+  initGrammar: Option[BNFGrammar[String]],
   usecases: Array[String],
   referenceFile: Option[String],
   initialFile: Option[String],

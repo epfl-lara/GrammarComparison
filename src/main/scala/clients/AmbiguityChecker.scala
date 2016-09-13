@@ -26,7 +26,7 @@ object AmbiguityChecker {
   }
 }
 
-class AmbiguityChecker(g: Grammar)
+class AmbiguityChecker[T](g: Grammar[T])
 	(implicit gctx: GlobalContext,
 	    opctx: AmbiguityContext,
 	    enumctx: EnumerationContext) {
@@ -131,7 +131,7 @@ class AmbiguityChecker(g: Grammar)
     ambiguities
   }
 
-  def checkForDuplicates(wordGen: SizeBasedRandomAccessGenerator, now: Int)(nt: Nonterminal, size: Int) = {    
+  def checkForDuplicates[T](wordGen: SizeBasedRandomAccessGenerator[T], now: Int)(nt: Nonterminal, size: Int) = {    
     //we can use bloom filters here if needed
     var words = Set[Word]()
     var duplicate: Option[Word] = None
@@ -159,7 +159,7 @@ class AmbiguityChecker(g: Grammar)
   /**
    * nos - Number of samples
    */
-  def sampleBasedChecker(wordGen: SizeBasedRandomAccessGenerator, nos: Int) = {
+  def sampleBasedChecker[T](wordGen: SizeBasedRandomAccessGenerator[T], nos: Int) = {
     //create a cnf grammar starting at each non-terminal    
     val cnfg = g.cnfGrammar
     val cykParsers = g.nonTerminals.map { nt =>

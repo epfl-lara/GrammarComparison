@@ -46,10 +46,10 @@ object GrammarBoundingHelper {
   } 
   
   import CNFConverter._
-  def createBoundedGrammar(grammar : Grammar, cycleLen : Option[Int]) = {
+  def createBoundedGrammar[T](grammar : Grammar[T], cycleLen : Option[Int]) = {
     val pg = grammar
     println("Plain size: #nonterminals = " + pg.nonTerminals.size + " #rules=" + pg.rules.size)
-    val g = (removeUnreachableRules _ andThen removeEpsilonProductions andThen removeUnproductiveRules)(pg)
+    val g = (removeUnreachableRules[T] _ andThen removeEpsilonProductions andThen removeUnproductiveRules)(pg)
     println("Normalized size: #nonterminals = " + g.nonTerminals.size + " #rules=" + g.rules.size)
     
     val plainbg = (new GrammarBoundingHelper(g)).boundGrammar(1, cycleLen)
@@ -64,7 +64,7 @@ object GrammarBoundingHelper {
   }
 }
 
-class GrammarBoundingHelper(g: Grammar) {
+class GrammarBoundingHelper[T](g: Grammar[T]) {
 
   import GrammarBoundingHelper._
   val reachSet = {
@@ -114,7 +114,7 @@ class GrammarBoundingHelper(g: Grammar) {
    * if it is 'n', cycles of length <= n will be removed.
    * TODO: can we use another strategy for this, like the kth non-terminals etc.
    */
-  def boundGrammar(recursionDepth: Int, contextLength: Option[Int] = None): Grammar = {
+  def boundGrammar[T](recursionDepth: Int, contextLength: Option[Int] = None): Grammar[T] = {
 
     //a mapping from non-terminal, context to a new non-terminal
     //note that the context could be empty
@@ -171,7 +171,7 @@ class GrammarBoundingHelper(g: Grammar) {
       freshnt
     }
     val newstart = boundRec(g.start, MultiSet()) //boundRec(g.start, Set())
-    val bg = Grammar(newstart, newrules)
+    val bg = Grammar[T](newstart, newrules)
 
     //println("# of contexts: "+contextMap.keys.groupBy(_._1).map{ case (k,v) => (k,v.size)})    
     bg

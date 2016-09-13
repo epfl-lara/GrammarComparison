@@ -14,13 +14,13 @@ import CFGrammar._
  * Generator for this grammar.
  */
 object GeneratorTopdown {
-  def apply(grammar: Grammar, depth: Int, separator: String = ""): List[List[Terminal]] = {
-    val g = new GenerationScheme(grammar: Grammar)
+  def apply(grammar: Grammar[_], depth: Int, separator: String = ""): List[List[Terminal]] = {
+    val g = new GenerationScheme(grammar: Grammar[_])
     val r = g.run(depth)
     r
   }
 
-  class GenerationScheme(grammar: Grammar) {
+  class GenerationScheme[T](grammar: Grammar[_]) {
     private val generated = ArrayBuffer[List[List[Symbol]]]()
 
     def isTerminal(s: Symbol) =

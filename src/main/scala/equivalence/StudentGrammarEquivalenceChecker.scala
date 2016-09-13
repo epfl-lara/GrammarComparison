@@ -8,10 +8,13 @@ import EBNFGrammar._
 import BNFConverter._
 import grammar.utils._
 
-class StudentGrammarEquivalenceChecker(g1: Grammar)(implicit gctx: GlobalContext,
+/**
+ * As of now, this can be used only with grammars whose terminals are strings as it depends on AntlrParser.
+ */
+class StudentGrammarEquivalenceChecker(g1: Grammar[String])(implicit gctx: GlobalContext,
   opctx: EquivalenceCheckingContext,
   enumctx: EnumerationContext,
-  parsectx: ParseContext) extends EquivalenceChecker {
+  parsectx: ParseContext) extends EquivalenceChecker[String] {
 
   val refg = CFGrammar.appendSuffix("1", g1)
   //using the grammar without epsilon and unit productions for enumeration
@@ -26,7 +29,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar)(implicit gctx: GlobalContext
   /**
    * Increments size in steps and looks for counter-example of each size
    */
-  def isEquivalentTo(g2: Grammar) = {
+  def isEquivalentTo(g2: Grammar[String]) = {
 
     //for stats
     gctx.stats.updateCounter(1, "EqTestCalls")
@@ -164,7 +167,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar)(implicit gctx: GlobalContext
   }
 
   //is g2 subset ref ?
-  def isSubset(g2: Grammar) = {
+  def isSubset(g2: Grammar[String]) = {
     //create a thread that sets stop flag in 'timeout' ms
     var stop = false
     val task = Util.scheduleTask(() => { stop = true }, opctx.timeOut)
@@ -236,7 +239,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar)(implicit gctx: GlobalContext
     ctrExamples
   }
 
-  def isSuperset(g2: Grammar) = {
+  def isSuperset(g2: Grammar[String]) = {
     //create a thread that sets stop flag in 'timeout' ms
     var stop = false
     val task = Util.scheduleTask(() => { stop = true }, opctx.timeOut)

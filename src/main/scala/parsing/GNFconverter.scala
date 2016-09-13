@@ -52,10 +52,10 @@ object GNFConverter {
     case _ => List(rule)
   }    
 
-  def toGNF(ing: Grammar)(implicit opctx: GlobalContext): Grammar = {
+  def toGNF[T](ing: Grammar[T])(implicit opctx: GlobalContext): Grammar[T] = {
     val g = ing.cnfGrammar //first convert the grammar to CNF 
 
-    val dumpGrammar = (title: String) => (g: Grammar) => {
+    val dumpGrammar = (title: String) => (g: Grammar[T]) => {
       println(title + " phase: ");
       println("----------------");
       println(g);
@@ -116,10 +116,10 @@ object GNFConverter {
     //simplify the transformed grammar
     val simplifications = {
       import CNFConverter._
-      removeUnreachableRules _ andThen
+      removeUnreachableRules[T] _ andThen
         removeUnproductiveRules
     }
-    val gnfGrammar = simplifications(Grammar(g.start, finalRules))
+    val gnfGrammar = simplifications(Grammar[T](g.start, finalRules))
     //dumpGrammar("final grammar")(gnfGrammar)
     gnfGrammar
   } 

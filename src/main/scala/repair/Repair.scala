@@ -18,7 +18,7 @@ import RepairResult._
 /**
  * Takes a reference grammar in any form
  */
-class Repairer(equivChecker: EquivalenceChecker)
+class Repairer[T](equivChecker: EquivalenceChecker[T])
 	(implicit gctx: GlobalContext,
 	    context: RepairContext) {
   import RepairResult._
@@ -27,11 +27,11 @@ class Repairer(equivChecker: EquivalenceChecker)
    * Returns a list of feedbacks which could be used to make the grammar correct using native symbols.
    * @param cnfG The grammar in CNF format
    */
-  def repair(cnfG: Grammar, result: EquivalenceResult): Grammar = {
+  def repair(cnfG: Grammar[T], result: EquivalenceResult): Grammar[T] = {
     require(isInCNF(cnfG))
 
     //perform repair recursively until the grammar becomes equivalent    
-    def recRepair(g: Grammar, result: EquivalenceResult): Grammar = {
+    def recRepair(g: Grammar[T], result: EquivalenceResult): Grammar[T] = {
       val newg = result match {
         case NotEquivalentNotAcceptedBySolution(unparsableWord) =>
           val newg = repairSubsetGrammar(g, unparsableWord)
@@ -58,7 +58,7 @@ class Repairer(equivChecker: EquivalenceChecker)
   /**
    * Applies repair one step and constructs a feedback
    */
-  def hint(cnfG: Grammar, result: EquivalenceResult) = {
+  def hint(cnfG: Grammar[T], result: EquivalenceResult) = {
     require(isInCNF(cnfG))
 
     val simpg = cnfG.fromCNF 
@@ -89,12 +89,12 @@ class Repairer(equivChecker: EquivalenceChecker)
     removeFeedbacks ++ replaceFeedbacks
   }*/
 
-  def repairSupersetGrammar(initGrammar: Grammar, initWord: List[Terminal]): Grammar = {
+  def repairSupersetGrammar(initGrammar: Grammar[T], initWord: List[Terminal]): Grammar[T] = {
 
     var iterations = 0
     var wordsRuledout = List[List[Terminal]]()
 
-    def rec(g: Grammar, ungenWord: List[Terminal]): Grammar = {
+    def rec(g: Grammar[T], ungenWord: List[Terminal]): Grammar[T] = {
 
       //check if we need to abort
 
@@ -133,7 +133,7 @@ class Repairer(equivChecker: EquivalenceChecker)
     finalg
   }
 
-  def repairSupersetStep(g: Grammar, ungenWord: List[Terminal]): GrammarFeedback = {
+  def repairSupersetStep(g: Grammar[T], ungenWord: List[Terminal]): GrammarFeedback = {
     if (ungenWord == List()) {
       //handle epsilon specially
       val epsilonRule = Rule(g.start, List())
@@ -144,7 +144,7 @@ class Repairer(equivChecker: EquivalenceChecker)
     }
   }
 
-  def applyFixes(ing: Grammar, fixes: List[GrammarFeedback]): Grammar = {
+  def applyFixes(ing: Grammar[T], fixes: List[GrammarFeedback]): Grammar[T] = {
     val newg = fixes.foldLeft(ing)((g, fix) => fix match {
       case AddAllRules(rules) =>
         Grammar(g.start, g.rules ++ rules)
@@ -167,7 +167,7 @@ class Repairer(equivChecker: EquivalenceChecker)
   }
 
   val subsetRepair = new SubsetRepair(equivChecker)
-  def repairSubsetStep(g: Grammar, unparsableWord: List[Terminal]) = {
+  def repairSubsetStep(g: Grammar[T], unparsableWord: List[Terminal]) = {
     if (unparsableWord == List()) {
       //handle epsilon specially
       val epsilonRule = Rule(g.start, List())
@@ -178,9 +178,9 @@ class Repairer(equivChecker: EquivalenceChecker)
     }
   }
 
-  def repairSubsetGrammar(initg: Grammar, initWord: List[Terminal]): Grammar = {
+  def repairSubsetGrammar(initg: Grammar[T], initWord: List[Terminal]): Grammar[T] = {
 
-    def rec(g: Grammar, unparsableWord: List[Terminal]): Grammar = {
+    def rec(g: Grammar[T], unparsableWord: List[Terminal]): Grammar[T] = {
 
       if (context.debugRepair > 0)
         println("Enabling acceptance of string: " + wordToString(unparsableWord))
