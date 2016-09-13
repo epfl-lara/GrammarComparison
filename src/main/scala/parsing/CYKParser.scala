@@ -1,9 +1,3 @@
-/**
- * File:   CYKParser.scala
- * Date:   23/5/2014
- * Author: Mikaël Mayer
- * Purpose:Parses a word in a given grammar
- */
 package parsing
 import grammar._
 import CFGrammar._
@@ -28,25 +22,6 @@ trait Parser {
 trait ParseTree
 case class Node(r: Rule, children: List[ParseTree]) extends ParseTree
 case class Leaf(t: Terminal) extends ParseTree
-/*object Node {
-  object CNF {
-    def apply(r: Rule, left: ParseTree, right: ParseTree): Node = Node(r, left :: right :: Nil)
-    def unapply(n: Node): Option[(Rule, Node, Node)] = n match {
-      case Node(r, List(left: Node, right: Node)) => Some((r, left, right))
-      case _ => None
-    }
-  }
-}*/
-/*object Leaf {
-  object CNF {
-    def apply(r: Rule, t: Terminal): Node = Node(r, List(Leaf(t)))
-    def unapply(n: Node): Option[(Rule, Terminal)] = n match {
-      case Node(r, List(Leaf(t))) => Some((r, t))
-      case _ => None
-    }
-  }
-}
-*/
 
 object ParseTreeUtils {
 

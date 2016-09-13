@@ -22,9 +22,9 @@ class GrammarParser extends RegexParsers {
    */
   def regId = symbol ^^ {
     case name if name == "\"\"" => RegEmpty()
-    case name => new RegId(name)
+    case name => new GenericRegId(name)
   }
-  def nontermRegId = nontermSymbol ^^ { case name => new RegId(name) }
+  def nontermRegId = nontermSymbol ^^ { case name => new NontermId(name) }
 
   //Precedence: () precedes unary operators,*,?,| precedes '.' precedes '|'
   def atom = regId | ("(" ~> regExp <~ ")")

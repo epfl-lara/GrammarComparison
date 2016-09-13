@@ -25,7 +25,7 @@ object BNFConverter {
    */
   def ebnfToGrammar[T](bnf: BNFGrammar[T]): Grammar[T] = {
     //create the set of nonterminals
-    var nonterms = bnf.rules.map(_.leftSide.toString).toSet
+    var nonterms = bnf.rules.map(_.leftSide.name).toSet
     def getFreshNonterm(name: String): Nonterminal = {
       val freshname = Util.freshName(Some(name))
       nonterms += freshname
@@ -37,20 +37,24 @@ object BNFConverter {
 
         // From a Regexp, returns a symbol representing this regexp
         def regexToSymbol(re: RegExp): (Symbol, List[Rule]) = re match {
+          case nid: NontermId =>
+            if (!nonterms.contains(nid.name))
+              throw new InvalidGrammarException(s"Nonterminal $nid does not have any rules!")                                        
+            (Nonterminal(nid.name), List())
+            
           case rid: GenericRegId =>
-            val name = rid.toString
-            val symbol =
-              if (nonterms.contains(name))
-                Nonterminal(name)
-              else
-                Terminal(rid.obj)              
-            (symbol, List())
+            rid.obj match {
+              case s: String if nonterms.contains(s) => // this is a non-terminal
+                (Nonterminal(s), List())
+              case o =>
+                (Terminal(rid.obj), List())
+            }            
 
           case RegClosure(sube) =>
             //create a new nonterminal 'C'
             val S = getFreshNonterm("star")
             //create new rules for closure
-            val newrules = regexToRules(S, RegOr(List(RegEmpty(), RegConcat(List(sube, new RegId(S.name))))))
+            val newrules = regexToRules(S, RegOr(List(RegEmpty(), RegConcat(List(sube, new NontermId(S.name))))))
             (S, newrules)
 
           case r @ RegPlus(sube) =>
@@ -58,13 +62,13 @@ object BNFConverter {
             val S = getFreshNonterm("plus")
             sube match {
               case sube: GenericRegId =>
-                val newrules = regexToRules(S, RegOr(List(sube, RegConcat(List(sube, new RegId(S.name))))))
+                val newrules = regexToRules(S, RegOr(List(sube, RegConcat(List(sube, new NontermId(S.name))))))
                 (S, newrules)
               case _ =>
                 //here, create a new symbol for sube
                 val T = getFreshNonterm("t")
                 val newrules = regexToRules(T, sube) ++
-                  regexToRules(S, RegOr(List(new RegId(T.name), RegConcat(List(new RegId(T.name), new RegId(S.name))))))
+                  regexToRules(S, RegOr(List(new NontermId(T.name), RegConcat(List(new NontermId(T.name), new NontermId(S.name))))))
                 (S, newrules)
             }
 

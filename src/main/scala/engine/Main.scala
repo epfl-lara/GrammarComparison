@@ -158,9 +158,18 @@ object Main {
         val gnfg = GNFConverter.toGNF(epg)
         println("GNFG: " + gnfg)
         println("GNFGrammarLL2 ? " + GNFUtilities.isGNFGrammarLL2(gnfg))
+      
+      case "-testDSL" =>
+        import GrammarDSL._
+        val defaultGrammar = BNFGrammar[String]('S, List {
+          'S -> (("a" ~ 'S ~ "b") | "")
+        })
+        println("DefaultGrammar: "+defaultGrammar)
+        println("CFGrammar: "+defaultGrammar.cfGrammar)
+        println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar.cfGrammar))
 
       case _ =>
-        println("Unknown option: " + option)
+        println("Unknown option: " + option)              
     }
     /*opctx.stats.updateCumTime(timer.timeWithoutGC, "TimeWithoutGC")
     opctx.stats.updateCumTime(timer.gcTime, "GCTime")
