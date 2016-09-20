@@ -13,14 +13,14 @@ import language.postfixOps
 class SententialFormParser extends RegexParsers {
   override type Elem = Char
   
-  def oneSymbol(sym: Symbol) = sym match {
+  def oneSymbol[T](sym: Symbol[T]) = sym match {
     case t@Terminal(name: String) => name ^^ { case _ => t}
     case nt@Nonterminal(name) => name ^^ { case _ => nt}  
   }
   
   def anySymbol(g: Grammar[String]) = {       
     val syms = (g.nonTerminals ++ g.terminals)
-    syms.tail.foldLeft(oneSymbol(syms.head) : Parser[Symbol]) {
+    syms.tail.foldLeft(oneSymbol(syms.head) : Parser[Symbol[String]]) {
       case (acc, sym) =>
         acc | oneSymbol(sym)
     }
@@ -35,7 +35,7 @@ class SententialFormParser extends RegexParsers {
 
     var linenum = 0
     var errstr = "";
-    val steps = lines.foldLeft(List[SententialForm]())((acc, line) => {
+    val steps = lines.foldLeft(List[SententialForm[String]]())((acc, line) => {
       linenum = linenum + 1
       if (!errstr.isEmpty)
         acc

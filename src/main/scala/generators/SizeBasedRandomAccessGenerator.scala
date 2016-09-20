@@ -10,9 +10,9 @@ import scala.math.BigInt
 
 object RandomAccessGenerator {    
   //a three valued result of querying an element at an index 
-  sealed abstract class LookupResult
+  sealed abstract class LookupResult[+T]
   object NoElementAtIndex extends LookupResult
-  case class Element(word: List[Terminal]) extends LookupResult
+  case class Element[T](word: List[Terminal[T]]) extends LookupResult[T]
   val bigzero = BigInt(0)
 }
 
@@ -33,34 +33,34 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
     Grammar[T](inG.start, inG.rules.flatMap(reduceArityOfRule))
   }
 
-  def reduceArityOfRule(rule: Rule): List[Rule] = {
+  def reduceArityOfRule(rule: Rule[T]): List[Rule[T]] = {
     val ntsize = nontermsInRightSide(rule).size
     if (ntsize > 2) {
       //divide the right hand side into half 
       val mid = ntsize / 2
       var i = 0
-      var firstHalf = List[Symbol]()
-      var secondHalf = List[Symbol]()
+      var firstHalf = List[Symbol[T]]()
+      var secondHalf = List[Symbol[T]]()
       rule.rightSide.foreach {
         case nt: Nonterminal if i < mid =>
           i += 1
           firstHalf :+= nt
-        case t: Terminal if i < mid =>
+        case t: Terminal[T] if i < mid =>
           firstHalf :+= t
         case sym @ _ =>
           secondHalf :+= sym
       }
       //second half will always at least two non-terminals
       val rnt = Nonterminal(Util.freshName())
-      val rightRules = reduceArityOfRule(Rule(rnt, secondHalf))
+      val rightRules = reduceArityOfRule(Rule[T](rnt, secondHalf))
       if (i == 1) {
         //in this case first half has only one non-terminal
-        val newRule = Rule(rule.leftSide, firstHalf :+ rnt)
+        val newRule = Rule[T](rule.leftSide, firstHalf :+ rnt)
         newRule +: rightRules
       } else {
         val lnt = Nonterminal(Util.freshName())
-        val leftRules = reduceArityOfRule(Rule(lnt, firstHalf))
-        val newRule = Rule(rule.leftSide, List(lnt, rnt))
+        val leftRules = reduceArityOfRule(Rule[T](lnt, firstHalf))
+        val newRule = Rule[T](rule.leftSide, List(lnt, rnt))
         newRule +: (leftRules ++ rightRules)
       }
     } else
@@ -72,11 +72,11 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
   val wordCounter = new WordCounter(grammar, wordSize)
 
   //caches from (nonterms/rules to size to index to word)
-  type SizeToIndexToWord = MutableMap[Int, MutableMap[BigInt, Word]]
-  private var yields = grammar.nonTerminals.map(_ -> MutableMap[Int, MutableMap[BigInt, Word]]()).toMap
-  private var ruleYields = grammar.rules.map(_ -> MutableMap[Int, MutableMap[BigInt, Word]]()).toMap
+  type SizeToIndexToWord = MutableMap[Int, MutableMap[BigInt, Word[T]]]
+  private var yields = grammar.nonTerminals.map(_ -> MutableMap[Int, MutableMap[BigInt, Word[T]]]()).toMap
+  private var ruleYields = grammar.rules.map(_ -> MutableMap[Int, MutableMap[BigInt, Word[T]]]()).toMap
 
-  def lookup[T](keyMap: Map[T, SizeToIndexToWord], key: T, size: Int, index: BigInt): Option[Word] = {
+  def lookup[U](keyMap: Map[U, SizeToIndexToWord], key: U, size: Int, index: BigInt): Option[Word[T]] = {
     //only cache indices smaller than a predefined size
     if (index.bitLength <= opctx.maxIndexSizeToCache) {
       val keyYields = keyMap.get(key)
@@ -90,7 +90,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
     } else None
   }
 
-  def update[T](keyMap: Map[T, SizeToIndexToWord], key: T, size: Int, index: BigInt, w: Word) = {
+  def update[U](keyMap: Map[U, SizeToIndexToWord], key: U, size: Int, index: BigInt, w: Word[T]) = {
     //only cache indices smaller than a predefined size    
     if (index.bitLength <= opctx.maxIndexSizeToCache) {
       val keyYields = keyMap.get(key)
@@ -100,15 +100,15 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
         if (sizeYields.isDefined) { // && sizeYields.get.size <= opctx.maxCacheSize) {
           sizeYields.get += (index -> w)
         } else
-          keyYields.get += (size -> MutableMap[BigInt, Word]())
+          keyYields.get += (size -> MutableMap[BigInt, Word[T]]())
       }
     }
   }
 
-  def getWordAtIndex(rule: Rule, size: Int, index: BigInt): LookupResult = {
+  def getWordAtIndex(rule: Rule[T], size: Int, index: BigInt): LookupResult[T] = {
 
     if (opctx.debugGenerator > 1)
-      println("Rule: " + rule + " Index: " + index)
+      println("Rule[T]: " + rule + " Index: " + index)
 
     val cachedWord = lookup(ruleYields, rule, size, index)
     if (cachedWord.isDefined) {
@@ -127,15 +127,15 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
           val w = getWordAtIndex(nt, ntsize, i, boundsCheck = false) //we can disable bounds check here as we know the index is within bounds
           w
       }
-      if (words.forall(_.isInstanceOf[Element])) {
+      if (words.forall(_.isInstanceOf[Element[T]])) {
         var i = -1
-        val newword = rhs.foldLeft(List[Terminal]()) {
-          case (acc, t: Terminal) => acc :+ t
+        val newword = rhs.foldLeft(List[Terminal[T]]()) {
+          case (acc, t: Terminal[T]) => acc :+ t
           case (acc, nt: Nonterminal) =>
             i += 1
-            acc ++ words(i).asInstanceOf[Element].word
+            acc ++ words(i).asInstanceOf[Element[T]].word
           case (_, other) =>
-            throw new IllegalStateException("Invalid Symbol in rhs: " + other)
+            throw new IllegalStateException("Invalid Symbol[T] in rhs: " + other)
         }
         update(ruleYields, rule, size, index, newword)
         Element(newword)
@@ -150,7 +150,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
    * Returns the word belonging to the non-terminal at the specified index.
    * The last parameter is for efficiency.
    */
-  def getWordAtIndex(nt: Nonterminal, size: Int, index: BigInt, boundsCheck: Boolean = true): LookupResult = {
+  def getWordAtIndex(nt: Nonterminal, size: Int, index: BigInt, boundsCheck: Boolean = true): LookupResult[T] = {
     //for stats
     if (gctx.enableStats)
      gctx.stats.updateCounterStats(1, "RecCalls", "WordGenCalls")
@@ -183,7 +183,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
     }
   }
 
-  def findRHSCoordinates(rule: Rule, size: Int, index: BigInt) = {
+  def findRHSCoordinates(rule: Rule[T], size: Int, index: BigInt) = {
     val Rule(lhs, rhs) = rule
     //get the number of ways of splitting sizes on the right hand symbols
     val alters = wordCounter.possibleSplitsForRule(rule, size)
@@ -438,8 +438,8 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
    * The following methods are for constructing a parse tree for a given index
    */
   import parsing._
-  def constructParseTreeForRule(rule: Rule, size: Int, index: BigInt): Option[ParseTree] = {
-    //println("Rule: " + rule + " Index: " + index)
+  def constructParseTreeForRule(rule: Rule[T], size: Int, index: BigInt): Option[ParseTree[T]] = {
+    //println("Rule[T]: " + rule + " Index: " + index)
 
     val Rule(lhs, rhs) = rule
     val nontermIndexSizeTriples = findRHSCoordinates(rule, size, index)
@@ -450,8 +450,8 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
         constructParseTreeForNonterminal(nt, ntsize, i).get
     }
     var i = -1
-    val parseTree = Node(rule, rhs.foldLeft(List[ParseTree]()) {
-      case (acc, t: Terminal) => acc :+ Leaf(t)
+    val parseTree = Node(rule, rhs.foldLeft(List[ParseTree[T]]()) {
+      case (acc, t: Terminal[T]) => acc :+ Leaf[T](t)
       case (acc, _) =>
         i += 1
         acc :+ childTrees(i)
@@ -459,20 +459,20 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
     Some(parseTree)
   }
 
-  def constructParseTreeForNonterminal(nt: Nonterminal, size: Int, index: BigInt): Option[ParseTree] = {
+  def constructParseTreeForNonterminal(nt: Nonterminal, size: Int, index: BigInt): Option[ParseTree[T]] = {
     //println("Nt: " + nt + " index: " + index)
     val (rule, rindex) = chooseRule(nt, size, index)
     constructParseTreeForRule(rule, size, rindex)
   }  
   
-  private abstract class AbstractSeqEnumerator(domainSize: BigInt, now: Int) extends Iterator[Word] {
+  private abstract class AbstractSeqEnumerator(domainSize: BigInt, now: Int) extends Iterator[Word[T]] {
     val maxIndex = if (now <= domainSize) now - 1
     				else (domainSize.toInt - 1)
     var index = -1
     //for stats
     val timer = new Stats.Timer()
     
-    def wordAtIndex(index: BigInt) : LookupResult
+    def wordAtIndex(index: BigInt) : LookupResult[T]
 
     override def next() = {
       index += 1
@@ -496,7 +496,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
     }
   }
   
-  private abstract class AbstractSamplingEnumerator(domainSize: BigInt, nos: Int) extends Iterator[Word] {
+  private abstract class AbstractSamplingEnumerator(domainSize: BigInt, nos: Int) extends Iterator[Word[T]] {
     //here the invariant that nos < domainSize holds
     val rand = new java.util.Random()
     val rangeBits =  Math.min(opctx.maxIndexSizeForGeneration, domainSize.bitLength - 1)//domainSize.bitLength / 2
@@ -514,7 +514,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
       cand
     }*/
     
-    def wordAtIndex(index: BigInt) : LookupResult
+    def wordAtIndex(index: BigInt) : LookupResult[T]
 
     override def next() = {
       if (numWords < nos) {
@@ -563,7 +563,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
       new SamplingEnumerator(nt, size, domainSize, nos)
   }
 
-  def getSeqEnumerator(nt: Nonterminal, size: Int, now: Int): Iterator[Word] = {
+  def getSeqEnumerator(nt: Nonterminal, size: Int, now: Int): Iterator[Word[T]] = {
     val domainSize = wordCounter.boundForNonterminal(nt, size)
     new SeqEnumerator(nt, size, domainSize, now)
   }  
@@ -572,7 +572,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
    * Finds the minimum word for a non-terminal subject to the maxsize
    * of the enumerator
    */
-  def getMinWord(nt: Nonterminal) : Option[Word]  = {    
+  def getMinWord(nt: Nonterminal) : Option[Word[T]]  = {    
     for(i <- 1 to wordSize) {
       if(wordCounter.boundForNonterminal(nt, i) > 0){
         getWordAtIndex(nt, i, 0, false) match { //find  the word at index 0
@@ -588,8 +588,8 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
    * The min word generated by an empty sentential form is the
    * empty word.
    */
-  def getMinWord(sf: SententialForm) : Option[Word] = {
-    sf.foldLeft(Some(List[Terminal]()): Option[Word]){
+  def getMinWord(sf: SententialForm[T]) : Option[Word[T]] = {
+    sf.foldLeft(Some(List[Terminal[T]]()): Option[Word[T]]){
       case (None, _) => 
         None
       case (Some(acc), nt : Nonterminal) => 
@@ -597,7 +597,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
           case None => None
           case Some(w) => Some(acc ++ w) 
         }
-      case (Some(acc), t : Terminal) => 
+      case (Some(acc), t : Terminal[T]) => 
         Some(acc :+ t)
     }
   }  

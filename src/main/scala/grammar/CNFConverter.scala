@@ -16,7 +16,7 @@ object CNFConverter {
   }
   
   //creates a variable representing a given terminal
-  def terminalVariable(t: Terminal) : Nonterminal = {
+  def terminalVariable : Nonterminal = {
     freshNonterminal(Some("t"))
   }    
 
@@ -33,7 +33,7 @@ object CNFConverter {
   //TODO: the use of 'Set' introduces some amount of nondeterminism
   def removeUnitProductions[T](grammar: Grammar[T]): Grammar[T] = {
 
-    def isUnitRule(rule: Rule) = rule match {
+    def isUnitRule(rule: Rule[T]) = rule match {
       case Rule(_, List(n : Nonterminal)) => true
       case _ => false
     }
@@ -56,7 +56,7 @@ object CNFConverter {
         })(Set(leftSide))
 
         //println("Other left sides: "+otherLeftSides)
-        otherLeftSides.map(left => Rule(left, rightSide))
+        otherLeftSides.map(left => Rule[T](left, rightSide))
     }
     val rulesWOUnitProductions = (nonUnitRules ++ newrules).distinct //drop all the unitRules       
     Grammar[T](grammar.start, rulesWOUnitProductions)
@@ -97,30 +97,30 @@ object CNFConverter {
    */
   def normalizeTerminals[T](grammar: Grammar[T]): Grammar[T] = {
     //A mapping from a terminal to the nonterminal that produces it      
-    var terminalToNonterminal = Map[Terminal, Nonterminal]()
+    var terminalToNonterminal = Map[Terminal[T], Nonterminal]()
 
     val rulesWithLoneTerminals = grammar.rules flatMap {
       //right sides are all nonterminals
       case rule @ Rule(_, rightSide) if rightSide.forall(_.isInstanceOf[Nonterminal]) =>
         List(rule)
       //right side has a lone terminal
-      case rule @ Rule(_, List(t: Terminal)) =>
+      case rule @ Rule(_, List(t: Terminal[T])) =>
         List(rule)
       //right side has both terminals and nonterminals
       case rule @ Rule(leftSide, rightSide) =>
         //create new rules for the terminals in the rightSide that have not been seen before 
         val newRules = rightSide collect {
-          case t: Terminal if !terminalToNonterminal.contains(t) =>
-            val freshNonterm = terminalVariable(t)
+          case t: Terminal[T] if !terminalToNonterminal.contains(t) =>
+            val freshNonterm = terminalVariable
             terminalToNonterminal += (t -> freshNonterm)
             Rule(freshNonterm, List(t))
         }
         //replace the terminals in the rightSide by the nonterminal that produces them
         val newRightSide = rightSide map {
           case nt: Nonterminal => nt
-          case t: Terminal => terminalToNonterminal(t)
+          case t: Terminal[T] => terminalToNonterminal(t)
         }
-        Rule(leftSide, newRightSide) +: newRules
+        Rule[T](leftSide, newRightSide) +: newRules
     }
     Grammar[T](grammar.start, rulesWithLoneTerminals)
   }
@@ -150,13 +150,13 @@ object CNFConverter {
    */
   def removeEpsilonProductions[T](grammar: Grammar[T]): Grammar[T] = {
 
-    def isEpsilonRule(rule: Rule) = rule.rightSide.isEmpty
+    def isEpsilonRule(rule: Rule[T]) = rule.rightSide.isEmpty
 
     /**
      * Generates all possible right sides from the given 'rightSide' by enumerating the cases
      * where the symbols given by 'epsilonSymbols' produce epsilon and does not produce epsilon
      */
-    def applyEpsilon(rightSide: List[Symbol], epsilonSymbols: List[Symbol]): List[List[Symbol]] = {
+    def applyEpsilon(rightSide: List[Symbol[T]], epsilonSymbols: List[Symbol[T]]): List[List[Symbol[T]]] = {
       //find the index of the first symbol that can produce epsilon
       val index = rightSide.indexWhere(epsilonSymbols.contains _, 0)
       if (index >= 0) {
@@ -171,8 +171,8 @@ object CNFConverter {
         List(rightSide)
     }
 
-    var appliedEpsilonRules = Set[Rule]() //tracks all the epsilon rules applied
-    def eliminateEpsilonRules(rules: List[Rule]): List[Rule] = {
+    var appliedEpsilonRules = Set[Rule[T]]() //tracks all the epsilon rules applied
+    def eliminateEpsilonRules(rules: List[Rule[T]]): List[Rule[T]] = {
 
       val (epsilonRules, nonEpsilonRules) = rules partition isEpsilonRule
       //println("Epsilon Rules: "+epsilonRules)
@@ -189,10 +189,10 @@ object CNFConverter {
 
     //eliminate epsilon productions until none exists 
     val rulesWOEpsilonProductions = Util.repeatUntil(eliminateEpsilonRules,
-      (rules: List[Rule]) => rules.filter(isEpsilonRule).isEmpty)(grammar.rules)
+      (rules: List[Rule[T]]) => rules.filter(isEpsilonRule).isEmpty)(grammar.rules)
 
     //If Start -> Epsilon was encountered then add it to the rules
-    val startProducesEpsilon = Rule(grammar.start, List())
+    val startProducesEpsilon = Rule(grammar.start, List[Symbol[T]]())
     val newrules = rulesWOEpsilonProductions.distinct ++ {
       if (appliedEpsilonRules.contains(startProducesEpsilon))
         List(startProducesEpsilon)
@@ -209,16 +209,16 @@ object CNFConverter {
    */
   def removeUnproductiveRules[T](grammar: Grammar[T]): Grammar[T] = {
     //Here, a set is used but this should not result in nondeterminism
-    val productiveNonterminals = Util.fixpoint((productives: Set[Symbol]) => {
+    val productiveNonterminals = Util.fixpoint((productives: Set[Symbol[T]]) => {
       val newproductives = grammar.rules collect {
-        case Rule(left, right) if right.forall(sym => sym.isInstanceOf[Terminal] || productives.contains(sym)) =>
+        case Rule(left, right) if right.forall(sym => sym.isInstanceOf[Terminal[T]] || productives.contains(sym)) =>
           left
       }
       productives ++ newproductives
     })(Set())
 
     val productiveRules = grammar.rules.filter(rule =>
-      rule.rightSide.forall(sym => sym.isInstanceOf[Terminal] || productiveNonterminals.contains(sym)))
+      rule.rightSide.forall(sym => sym.isInstanceOf[Terminal[T]] || productiveNonterminals.contains(sym)))
     Grammar[T](grammar.start, productiveRules)
   }
 
@@ -248,7 +248,7 @@ object CNFConverter {
   def addStartSymbol[T](g: Grammar[T]): Grammar[T] = {
     if (g.rules.exists(_.rightSide.contains(g.start))) {
       val newstart = copy(g.start)
-      Grammar[T](newstart, Rule(newstart, List(g.start)) +: g.rules)
+      Grammar[T](newstart, Rule(newstart, List[Symbol[T]](g.start)) +: g.rules)
     } else
       g
   }
@@ -316,11 +316,11 @@ object CNFConverter {
    * Additionally, it also remove unit nonterminals, which are nonterminals
    * that have only one production.
    */
-  def removeCNFNonterminals[T](inG: Grammar[T], irules: List[Rule] = List()): List[Rule] = {
+  def removeCNFNonterminals[T](inG: Grammar[T], irules: List[Rule[T]] = List()): List[Rule[T]] = {
 
     val cnfNonterminals = inG.nonTerminals.filter(isCNFNonterminal).toSet    
 
-    def nontermsInRules(rules: List[Rule]) = {
+    def nontermsInRules(rules: List[Rule[T]]) = {
       rules.flatMap {
         case Rule(ls, rs) =>
           ls +: rs.collect {
@@ -330,7 +330,7 @@ object CNFConverter {
       }.toSet
     }
 
-    def removeCNFNontermsInRules(input: (Grammar[T], List[Rule])) = {
+    def removeCNFNontermsInRules(input: (Grammar[T], List[Rule[T]])) = {
       val (g, rules) = input
       //val nontermsToRemove = nontermsInRules(rules).intersect(cnfNonterminals ++ unitNts)
       val nontermsToRemove = nontermsInRules(rules).intersect(cnfNonterminals)

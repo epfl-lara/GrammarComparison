@@ -30,11 +30,11 @@ object CFGrammar {
     }
   }
 
-  trait Symbol {
+  trait Symbol[+T] { // symbol is covariant in T
     def toUniqueString: String
   }
 
-  class Nonterminal(val id: Long, val name: String) extends Symbol {
+  class Nonterminal(val id: Long, val name: String) extends Symbol[Nothing] {
     override def hashCode = id.toInt
     override def equals(other: Any) = {
       other match {
@@ -51,11 +51,11 @@ object CFGrammar {
   /**
    * generic terminals 
    */
-  class Terminal(val obj: Any) extends Symbol {
+  class Terminal[T](val obj: T) extends Symbol[T] {
     override def hashCode = obj.hashCode()
     override def equals(other: Any) = {
       other match {
-        case other: Terminal => this.obj == other.obj
+        case other: Terminal[T] => this.obj == other.obj
         case _ => false
       }
     }
@@ -66,20 +66,20 @@ object CFGrammar {
   //a big factory for creating terminals
   object Terminal {    
     val terminalFactory = MutableMap[String, StringTerminal]()
-    def apply(obj: Any): Terminal = {
+    def apply[T](obj: T): Terminal[T] = {
       obj match {
         case name: String =>
           terminalFactory.getOrElse(name, {
             val t = new StringTerminal(SymbolId.newId, name)
             terminalFactory += (name -> t)
             t
-          })
+          }).asInstanceOf[Terminal[T]]
         case _ =>
           new Terminal(obj)
       }
     }
-
-    def unapply(t: Terminal): Option[Any] = {
+    
+    def unapply[T](t: Terminal[T]): Option[T] = {
       Some(t.obj)
     }
   }
@@ -88,7 +88,7 @@ object CFGrammar {
    *  A hashconsed terminals used for representing string valued terminals.
    *  Note: all string valued terminals  will use this class (an invariant of the system)
    */
-  class StringTerminal(val id: Long, val name: String) extends Terminal(name) {
+  class StringTerminal(val id: Long, val name: String) extends Terminal[String](name) {
     override def hashCode = id.toInt
     override def equals(other: Any) = {
       other match {
@@ -100,7 +100,7 @@ object CFGrammar {
     override def toUniqueString = name + id
   }
 
-  case class Rule(leftSide: Nonterminal, rightSide: List[Symbol]) {
+  case class Rule[T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
 
     lazy val hash = leftSide.hashCode * 41 + rightSide.hashCode
     override def hashCode: Int = hash
@@ -117,7 +117,7 @@ object CFGrammar {
         case rside =>
           val pattern = """[\|\*\+\(\)\?]""".r
           rside.map {
-            case t: Terminal =>
+            case t: Terminal[_] =>             
               val symstr = t.toString
               pattern.findFirstIn(symstr) match {
                 case None => symstr
@@ -139,12 +139,12 @@ object CFGrammar {
   /**
    * The type parameter is the type of the terminal
    */
-  case class Grammar[T](start: Nonterminal, rules: List[Rule]) {
+  case class Grammar[T](start: Nonterminal, rules: List[Rule[T]]) {
 
     //used for efficiency
     lazy val nontermToRules = this.rules.groupBy(_.leftSide)
     lazy val nonTerminals = this.rules.map(_.leftSide).distinct
-    lazy val terminals = this.rules.flatMap(_.rightSide.collect { case t: Terminal => t }).toSet
+    lazy val terminals = this.rules.flatMap(_.rightSide.collect { case t: Terminal[T] => t }).toSet
     lazy val nontermsInPostOrder = GrammarUtils.postOrder(this)
     lazy val cnfGrammar = CNFConverter.toCNF(this)
     lazy val fromCNF = CNFConverter.cnfToGrammar(cnfGrammar)
@@ -189,7 +189,7 @@ object CFGrammar {
   /**
    * Preserves the ordering of the rules
    */
-  def rulesToStr(rules: List[Rule]) = {
+  def rulesToStr[T](rules: List[Rule[T]]) = {
     val groupedRules = rules.groupBy(_.leftSide)
     val lefts = rules.map(_.leftSide).distinct
     lefts.foldLeft("") {
@@ -198,10 +198,10 @@ object CFGrammar {
     }
   }
 
-  type SententialForm = List[Symbol]
-  type Word = List[Terminal]
-  type Words = List[Word]
-  type SententialForms = List[SententialForm]
+  type SententialForm[T] = List[Symbol[T]]
+  type Word[T] = List[Terminal[T]]
+  type Words[T] = List[Word[T]]
+  type SententialForms[T] = List[SententialForm[T]]
 
   def copy(s: Nonterminal): Nonterminal = {
     Nonterminal(Util.freshName(Some(s.name)))
@@ -252,11 +252,11 @@ object CFGrammar {
   /**
    * Replaces a nonterminal by another nonterminal.
    */
-  def replace(rules: List[Rule], replaceMap: Map[Nonterminal, Nonterminal]): List[Rule] = {
+  def replace[U](rules: List[Rule[U]], replaceMap: Map[Nonterminal, Nonterminal]): List[Rule[U]] = {
 
-    def repSym[T <: Symbol](s: T): T = s match {
+    def repSym[T <: Symbol[U]](s: T): T = s match {
       case nt: Nonterminal => replaceMap.getOrElse(nt, nt).asInstanceOf[T]
-      case t: Terminal => t.asInstanceOf[T]
+      case t: Terminal[U] => t.asInstanceOf[T]
     }
     val newrules = rules.map {
       case Rule(l, rhs) => Rule(repSym(l), rhs.map(repSym))
@@ -274,7 +274,7 @@ object CFGrammar {
     g.nontermToRules(nt).map(_.rightSide).distinct
   }
 
-  def nontermsInRightSide(rule: Rule): List[Nonterminal] = {
+  def nontermsInRightSide[T](rule: Rule[T]): List[Nonterminal] = {
     rule.rightSide.collect { case nt: Nonterminal => nt }
   }
 
@@ -304,10 +304,9 @@ object CFGrammar {
    * TODO: change this to inline nonterminals only at selected indices
    */
   def inlineNontermsInSententialForm[T](nontermsToInline: Set[Nonterminal],
-    sententialForm: List[Symbol],
-    g: Grammar[T]): List[List[Symbol]] = {
+    sententialForm: List[Symbol[T]], g: Grammar[T]): List[List[Symbol[T]]] = {
     //      /println("candidate rules: "+candRules)      
-    def inlineNonterms(sform: List[Symbol]): List[List[Symbol]] = {
+    def inlineNonterms(sform: List[Symbol[T]]): List[List[Symbol[T]]] = {
       val index = sform.indexWhere(sym => sym match {
         case nt: Nonterminal => nontermsToInline.contains(nt)
         case _ => false
@@ -330,7 +329,7 @@ object CFGrammar {
     inlineNonterms(sententialForm)
   }
 
-  def inlineNontermsInRules[T](nontermsToInline: Set[Nonterminal], rules: List[Rule], g: Grammar[T]) = {
+  def inlineNontermsInRules[T](nontermsToInline: Set[Nonterminal], rules: List[Rule[T]], g: Grammar[T]) = {
     val newrules = rules.flatMap {
       case rule @ Rule(leftSide, rightSide) =>
         inlineNontermsInSententialForm(nontermsToInline, rightSide, g).map(rs => Rule(leftSide, rs))
@@ -349,7 +348,7 @@ object CFGrammar {
     Grammar[T](g.start, inlineNontermsInRules(nontermsToInline, g.rules, g))
   }
 
-  def terminals[T](g: Grammar[T]): Set[Terminal] = {
+  def terminals[T](g: Grammar[T]): Set[Terminal[T]] = {
     g.terminals
   }
 
@@ -363,7 +362,7 @@ object CFGrammar {
    */
   def reach[T](g: Grammar[T], src: Nonterminal, dest: Nonterminal): Boolean = {
 
-    var visited = scala.collection.mutable.Set[Symbol](src)
+    var visited = scala.collection.mutable.Set[Symbol[T]](src)
     def reachRec(nt: Nonterminal): Boolean = {
       g.nontermToRules(nt).exists {
         case Rule(_, rightSide) =>
@@ -397,13 +396,13 @@ object CFGrammar {
       false
   }
 
-  sealed abstract class NormFeedback
+  sealed abstract class NormFeedback[+T] 
   case class Correct() extends NormFeedback
-  case class Error(rule: Rule, msg: String) extends NormFeedback
+  case class Error[T](rule: Rule[T], msg: String) extends NormFeedback
 
   def isNormalized[T](g: Grammar[T]) = g.rules.forall(r => isRuleNormalized(g.start, r) == Correct())
 
-  def isRuleNormalized(start: Nonterminal, rule: Rule, checkStart: Boolean = true): NormFeedback = {
+  def isRuleNormalized[T](start: Nonterminal, rule: Rule[T], checkStart: Boolean = true): NormFeedback[T] = {
     rule match {
       case Rule(leftSide, rightSide) => {
         val rightSideOk =
@@ -413,7 +412,7 @@ object CFGrammar {
             else
               Error(rule, "Only start symbol can produce empty string")
           else if (rightSide.size == 1) //no unit productions 
-            if (rightSide(0).isInstanceOf[Terminal])
+            if (rightSide(0).isInstanceOf[Terminal[T]])
               Correct()
             else
               Error(rule, "Unit production")
@@ -441,9 +440,9 @@ object CFGrammar {
    * appearing on the right-side as an error, irrespective of whether it is
    * nullable or not.
    */
-  def getRuleNotInCNF[T](g: Grammar[T], checkStart: Boolean = true): Option[Error] = {
+  def getRuleNotInCNF[T](g: Grammar[T], checkStart: Boolean = true): Option[Error[T]] = {
 
-    def isRuleInCNF(rule: Rule, checkStart: Boolean) = rule match {
+    def isRuleInCNF(rule: Rule[T], checkStart: Boolean): NormFeedback[T] = rule match {
       case Rule(leftSide, rightSide) =>
         isRuleNormalized(g.start, rule, checkStart) match {
           case Correct() =>
@@ -462,32 +461,32 @@ object CFGrammar {
               } else
                 Correct()
             } else
-              Error(rule, "Right side has more than two symbols")
+              Error[T](rule, "Right side has more than two symbols")
           case other =>
             other
         }
     }
-    g.rules.foldLeft(None: Option[Error]) {
+    g.rules.foldLeft(None: Option[Error[T]]) {
       case (None, rule) =>
         isRuleInCNF(rule, checkStart) match {
           case Correct() =>
             None
-          case err: Error =>
+          case err: Error[T] =>
             Some(err)
         }
       case (fb, rule) => fb
     }
   }
 
-  def getRuleNotInGNF[T](g: Grammar[T]): Option[Error] = {
-    def isRuleInGNF(rule: Rule) = rule match {
+  def getRuleNotInGNF[T](g: Grammar[T]): Option[Error[T]] = {
+    def isRuleInGNF(rule: Rule[T])  = rule match {
       case Rule(leftSide, rightSide) =>
         isRuleNormalized(g.start, rule) match {
           case Correct() =>
             if (rightSide.size < 2)
               Correct()
             else {
-              if (rightSide(0).isInstanceOf[Terminal])
+              if (rightSide(0).isInstanceOf[Terminal[T]])
                 Correct()
               else Error(rule, "Right side should start with a terminal")
             }
@@ -495,12 +494,12 @@ object CFGrammar {
             other
         }
     }
-    g.rules.foldLeft(None: Option[Error]) {
+    g.rules.foldLeft(None: Option[Error[T]]) {
       case (None, rule) =>
         isRuleInGNF(rule) match {
           case Correct() =>
             None
-          case err: Error =>
+          case err: Error[T] =>
             Some(err)
         }
       case (fb, rule) => fb
@@ -509,14 +508,14 @@ object CFGrammar {
 
   def isInGNF[T](g: Grammar[T]) = !getRuleNotInGNF(g).isDefined
 
-  def wordToString(sententialForm: List[Symbol]) = {
+  def wordToString[T](sententialForm: List[Symbol[T]]) = {
     if (sententialForm.isEmpty)
       "\"\""
     else
       sententialForm.mkString(" ")
   }
 
-  def wordsToString(words: Seq[List[Symbol]]) = {
+  def wordsToString[T](words: Seq[List[Symbol[T]]]) = {
     words.map(wordToString).mkString("\n")
   }
 
@@ -525,7 +524,7 @@ object CFGrammar {
    * input grammar (and the subset of rules of the grammar)
    * to the *maximum* extent possible.
    */
-  def removeNonterminals[T](cnfG: Grammar[T], irules: List[Rule], nonterms: List[Nonterminal]) = {
+  def removeNonterminals[T](cnfG: Grammar[T], irules: List[Rule[T]], nonterms: List[Nonterminal]) = {
     //Note: do not remove start
     nonterms.filterNot(_ == cnfG.start).foldLeft((cnfG, irules)) {
       case ((g, rules), nonterm) if g.nonTerminals.contains(nonterm) =>
@@ -585,7 +584,7 @@ object CFGrammar {
       case Rule(Nonterminal(lname), rhs) =>
         val newrhs = rhs.map {
           case Nonterminal(rname) => Nonterminal(rname + suffix)
-          case t: Terminal => t
+          case t: Terminal[T] => t
         }
         Rule(Nonterminal(lname + suffix), newrhs)
     }

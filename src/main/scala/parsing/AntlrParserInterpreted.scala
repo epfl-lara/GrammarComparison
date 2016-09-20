@@ -15,14 +15,14 @@ import java.lang.reflect.Constructor
 import org.antlr.runtime.tree.CommonTree
 
 class AntlrParserInterpreted(ing: Grammar[String])
-	(implicit gctx: GlobalContext, opctx: ParseContext) extends Parser {
+	(implicit gctx: GlobalContext, opctx: ParseContext) extends Parser[String] {
 
   val antlrg = {
     //check if there is indirect left recursion. If yes, convert the grammar to GNF
     val g = convertGrammarForAntlrParsing(ing)
     //create a new start symbol    
     val ns = Nonterminal(Util.freshName(Some(g.start.name)))
-    val nrs = Rule(ns, List(g.start))
+    val nrs = Rule(ns, List[Symbol[String]](g.start))
     val ng = Grammar[String](ns, nrs +: g.rules)
 
     //make non-terminals start with lower case letters, if they don't already
@@ -105,9 +105,9 @@ class AntlrParserInterpreted(ing: Grammar[String])
   def grammarToAntlr(gname: String) = {
 
     val tg = antlrg
-    def rsideToStr(rside: List[Symbol]) = {
+    def rsideToStr(rside: List[Symbol[String]]) = {
       rside.foldLeft("") {
-        case (acc, t: Terminal) => acc + " '" + t + "'"
+        case (acc, t: Terminal[String]) => acc + " '" + t + "'"
         case (acc, nt: Nonterminal) => acc + " " + nt
       }
     }
@@ -132,7 +132,7 @@ class AntlrParserInterpreted(ing: Grammar[String])
     antlrStr + "WS : [ \\t\\r\\n]+ -> skip ;" + "\nErrorChar : . ;"
   }
 
-  def parse(s: List[Terminal])(implicit opctx: GlobalContext): Boolean = {
+  def parse(s: List[Terminal[String]])(implicit opctx: GlobalContext): Boolean = {
     //for stats
     opctx.stats.updateCounter(1, "AntlrParseCalls")
     val timer = new Stats.Timer()
@@ -156,7 +156,7 @@ class AntlrParserInterpreted(ing: Grammar[String])
     (parser.getNumberOfSyntaxErrors == 0)
   }
 
-  def parseWithTree(s: List[Terminal])(implicit opctx: GlobalContext): Option[ParseTree] = {
+  def parseWithTree(s: List[Terminal[String]])(implicit opctx: GlobalContext): Option[ParseTree[String]] = {
     throw new IllegalStateException("Not implemented yet!")
   }
 }

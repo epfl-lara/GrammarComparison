@@ -4,28 +4,28 @@ package grammar
 object EBNFGrammar {
   import CFGrammar._
   import BNFConverter._
-  
+    
   /**
    * A grammar in Backus-Naur form
    */ 
-  sealed abstract class RegExp {
+  sealed abstract class RegExp[+T] {
     // operators for the DSL
-    def |(other: RegExp): RegExp = RegOr(List(this, other))
-    def ~(other: RegExp) : RegExp = RegConcat(List(this, other))
-    def * : RegExp = RegClosure(this)
-    def + : RegExp = RegPlus(this)
-    def ? : RegExp = RegOption(this)
+    def |[W >: T, U <: W](other: RegExp[U]): RegExp[W] = RegOr[W]( this :: (List(other) : List[RegExp[W]]) )
+    def ~[W >: T, U <: W](other: RegExp[U]): RegExp[W] = RegConcat[W]( this :: (List(other) : List[RegExp[W]]) )    
+    def * : RegExp[T] = RegClosure(this)
+    def + : RegExp[T] = RegPlus(this)
+    def ? : RegExp[T] = RegOption(this)
   }
-  case class RegOr(args: List[RegExp]) extends RegExp {
+  case class RegOr[T](args: List[RegExp[T]]) extends RegExp[T] {
     override def toString = args.mkString(" | ")
   }
-  case class RegConcat(args: List[RegExp]) extends RegExp {
+  case class RegConcat[T](args: List[RegExp[T]]) extends RegExp[T] {
     override def toString = (args map {
       case or @ RegOr(_) => "(" + or.toString + ")"
       case other@_ => other.toString 
     }).mkString(" ") 
   }
-  case class RegPlus(re: RegExp) extends RegExp {
+  case class RegPlus[T](re: RegExp[T]) extends RegExp[T] {
     override def toString = re match {
       case RegOr(_) | RegConcat(_) =>
         "("+re.toString()+")+"
@@ -33,7 +33,7 @@ object EBNFGrammar {
         re.toString()+"+"
     }
   }
-  case class RegClosure(re: RegExp) extends RegExp {
+  case class RegClosure[T](re: RegExp[T]) extends RegExp[T] {
     override def toString = re match {
       case RegOr(_) | RegConcat(_) =>
         "("+re.toString()+")*"
@@ -41,7 +41,7 @@ object EBNFGrammar {
         re.toString()+"*"
     }
   }
-  case class RegOption(re: RegExp) extends RegExp {
+  case class RegOption[T](re: RegExp[T]) extends RegExp[T] {
     override def toString = re match {
       case RegOr(_) | RegConcat(_) =>
         "("+re.toString()+")?"
@@ -51,49 +51,47 @@ object EBNFGrammar {
   }   
   
   /**
-   * A generic identifier class, for  allowing the content to be anything.
-   * This may or may not represent non-terminals.
-   * We are loosing typing here for programming convenience. 
-   * But, this loss of typing is not visible at the user level.
-   * This classes uses value equality and hence behaves similar to a case class
+   * A class that represents terminals or non-terminals, if we do not know which one is what.
+   * This happens when a grammar is read as input, and not constructed using DSL 
    */
-  class GenericRegId(val obj: Any) extends RegExp {
+  class Sym[+T](val obj: Any) extends RegExp[T] {
     override def hashCode = obj.hashCode()
     override def equals(other: Any) = other match {
-      case rid : GenericRegId => rid.obj  == obj
+      case sym : Sym[T] => sym.obj == obj
       case _ => false
     }
-    override def toString = obj match {
+  }  
+  
+  class Term[T](val content: T) extends Sym[T](content) {    
+    override def toString = content match {
       case s : String =>
         if (s.matches("""([^\s\|\*\+\(\)\?'])+""")) s
         else "'" + s + "'"
-      case _ => obj.toString()
+      case _ => content.toString()
     }
   }
   
   /**
-   * A class that represents non-terminals appearing on the LHS of rules.
-   * The RHS non-terminals may be genericRegId or nontermId
-   * This allows distinguishing between terminals and non-terminals
+   * A class that represents non-terminals appearing on the LHS of rules.   
    */
-  class NontermId(val name: String) extends GenericRegId(name) {
+  class NontermId(val name: String) extends Sym[Nothing](name) {
     // a DSL construct for creating a rule
-    def -> (rhs: RegExp) = BNFRule(this, rhs)           
-    
+    def ->[T] (rhs: RegExp[T]) = BNFRule(this, rhs)                  
     override def toString = name
   }
+  
   case class RegEmpty() extends RegExp {
     override def toString = "\"\""      
   }
       
-  case class BNFRule(leftSide: NontermId, rightSide: RegExp) {    
+  case class BNFRule[T](leftSide: NontermId, rightSide: RegExp[T]) {    
     override def toString = leftSide + " -> " + rightSide.toString()    
   }
   
   /**
    * The type parameter represents the type of the terminals
    */
-  case class BNFGrammar[T](start: NontermId, rules : List[BNFRule]) {
+  case class BNFGrammar[T](start: NontermId, rules : List[BNFRule[T]]) {
     override def toString = rules.mkString("\n")
     
     def toHTMLString = {      

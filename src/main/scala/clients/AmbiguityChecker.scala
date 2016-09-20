@@ -10,15 +10,15 @@ import java.util.Random
 
 object AmbiguityChecker {
 
-  sealed abstract class AmbiguityFeedback
+  sealed abstract class AmbiguityFeedback[+T]
   case class PossiblyUnambiguous() extends AmbiguityFeedback
   case class Unambiguous() extends AmbiguityFeedback
-  case class AmbiguityWitness(ant: Nonterminal, w: Word) extends AmbiguityFeedback {
+  case class AmbiguityWitness[T](ant: Nonterminal, w: Word[T]) extends AmbiguityFeedback {
     override def toString = {
       "Ambiguous nonterminal: " + ant + " word: " + wordToString(w)
     }
   }
-  case class AmbiguityWitnessWithTrees(ant: Nonterminal, w: Word, ptrees: List[ParseTree]) extends AmbiguityFeedback {
+  case class AmbiguityWitnessWithTrees[T](ant: Nonterminal, w: Word[T], ptrees: List[ParseTree[T]]) extends AmbiguityFeedback {
     //    override def toString = {
     //      "Ambiguous nonterminal: " + ant + " word: " + wordToString(w) + "parse trees: " + 
     //      
@@ -33,7 +33,7 @@ class AmbiguityChecker[T](g: Grammar[T])
 
   import AmbiguityChecker._
 
-  def checkAmbiguityInStudentGrammar(): List[AmbiguityFeedback] = {
+  def checkAmbiguityInStudentGrammar(): List[AmbiguityFeedback[T]] = {
 
     val maxSize = opctx.maxSize
     val ng = g.fromCNF  
@@ -45,12 +45,12 @@ class AmbiguityChecker[T](g: Grammar[T])
     val nontermsInPO = GrammarUtils.postOrder(ng)
 
     //for every size from 1 to 'maxWordSize' check if there is an ambiguous word       
-    var ambiguities = List[AmbiguityWitness]()
+    var ambiguities = List[AmbiguityWitness[T]]()
     var break = false
     for (size <- 1 to maxSize) if (!break) {
       nontermsInPO.foreach { nt =>
         consecChecker(nt, size) match {
-          case aw: AmbiguityWitness =>
+          case aw: AmbiguityWitness[T] =>
             ambiguities :+= aw
             break = true
           case _ => ;
@@ -60,7 +60,7 @@ class AmbiguityChecker[T](g: Grammar[T])
     ambiguities
   }
   
-  def checkForAmbiguity(startSize: Int = 1, fastmode: Boolean = false): List[AmbiguityFeedback] = {
+  def checkForAmbiguity(startSize: Int = 1, fastmode: Boolean = false): List[AmbiguityFeedback[T]] = {
 
     //This generator is shared by nonterminals
     val maxSize = opctx.maxSize
@@ -79,7 +79,7 @@ class AmbiguityChecker[T](g: Grammar[T])
 
     //for every size from 1 to 'maxWordSize' check if there is an ambiguous word   
     var exploredNonterms = Set[Nonterminal]() //set of nonterms that are found to be ambiguous
-    var ambiguities = List[AmbiguityWitness]()
+    var ambiguities = List[AmbiguityWitness[T]]()
 
     for (size <- startSize to maxSize) {
       if (!gctx.abort) {
@@ -90,7 +90,7 @@ class AmbiguityChecker[T](g: Grammar[T])
           //println("Checking non-terminal: " + nt + " for size: " + size)          
           if (!gctx.abort) {        
             consecChecker(nt, size) match {
-              case aw: AmbiguityWitness =>
+              case aw: AmbiguityWitness[T] =>
                                 
                 //log ambiguous words to console and file
                 //println("Found ambiguous word: " + aw)
@@ -109,7 +109,7 @@ class AmbiguityChecker[T](g: Grammar[T])
                 if (spaceSize > nos) {
                   //here use the sample based checker
                   sampleChecker(nt, size) match {
-                    case aw: AmbiguityWitness =>
+                    case aw: AmbiguityWitness[T] =>
                       //log ambiguous words to console and file
                       //println("Found ambiguous word (by sampling): " + aw)
                       gctx.logMessage("Found ambiguous word (by sampling): " + aw)
@@ -131,10 +131,10 @@ class AmbiguityChecker[T](g: Grammar[T])
     ambiguities
   }
 
-  def checkForDuplicates[T](wordGen: SizeBasedRandomAccessGenerator[T], now: Int)(nt: Nonterminal, size: Int) = {    
+  def checkForDuplicates(wordGen: SizeBasedRandomAccessGenerator[T], now: Int)(nt: Nonterminal, size: Int) = {    
     //we can use bloom filters here if needed
-    var words = Set[Word]()
-    var duplicate: Option[Word] = None
+    var words = Set[Word[T]]()
+    var duplicate: Option[Word[T]] = None
     val seqEnum = wordGen.getSeqEnumerator(nt, size, now)
     var break = false
 
@@ -159,7 +159,7 @@ class AmbiguityChecker[T](g: Grammar[T])
   /**
    * nos - Number of samples
    */
-  def sampleBasedChecker[T](wordGen: SizeBasedRandomAccessGenerator[T], nos: Int) = {
+  def sampleBasedChecker(wordGen: SizeBasedRandomAccessGenerator[T], nos: Int) = {
     //create a cnf grammar starting at each non-terminal    
     val cnfg = g.cnfGrammar
     val cykParsers = g.nonTerminals.map { nt =>
@@ -177,7 +177,7 @@ class AmbiguityChecker[T](g: Grammar[T])
         checkForDuplicates(wordGen, nos)(nt, size)
       } else {
         val sampleEnum = wordGen.getSamplingEnumerator(nt, size, nos)
-        var feedback: AmbiguityFeedback = PossiblyUnambiguous()
+        var feedback: AmbiguityFeedback[T] = PossiblyUnambiguous()
         var break = false
         while (!break && sampleEnum.hasNext) {
           //get a random number with at most rangeBits number of bits    

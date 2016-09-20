@@ -33,16 +33,16 @@ object GrammarBoundingHelper {
   }
   
   import parsing._
-  def remapParseTree(ptree: ParseTree) : ParseTree = ptree match {
+  def remapParseTree[T](ptree: ParseTree[T]) : ParseTree[T] = ptree match {
     case Node(Rule(lhs, rhs), children) =>
       val childTrees = children.map(remapParseTree)
       val newrule = Rule(getUnboundedNonterminal(lhs), rhs.map{ 
-        case t : Terminal => t
+        case t : Terminal[T] => t
         case nt : Nonterminal =>
           getUnboundedNonterminal(nt)
       })
       Node(newrule, childTrees)
-    case l : Leaf => l           
+    case l : Leaf[T] => l           
   } 
   
   import CNFConverter._
@@ -57,7 +57,7 @@ object GrammarBoundingHelper {
     println("Plain bg size: #nonterminals = " + plainbg.nonTerminals.size + " #rules=" + plainbg.rules.size)
     
     //remove unreachable and unproductive non-terminals if any
-    val bg = (removeUnreachableRules _ andThen removeUnproductiveRules)(plainbg)
+    val bg = (removeUnreachableRules[T] _ andThen removeUnproductiveRules)(plainbg)
     //GrammarWriter.dumpGrammar(boundFilename, bg)
     println("Bounded size: #nonterminals = " + bg.nonTerminals.size + " #rules=" + bg.rules.size)
     bg
@@ -114,13 +114,13 @@ class GrammarBoundingHelper[T](g: Grammar[T]) {
    * if it is 'n', cycles of length <= n will be removed.
    * TODO: can we use another strategy for this, like the kth non-terminals etc.
    */
-  def boundGrammar[T](recursionDepth: Int, contextLength: Option[Int] = None): Grammar[T] = {
+  def boundGrammar(recursionDepth: Int, contextLength: Option[Int] = None): Grammar[T] = {
 
     //a mapping from non-terminal, context to a new non-terminal
     //note that the context could be empty
     var contextMap = Map[(Nonterminal, MultiSet[Nonterminal]), Nonterminal]()
     //var contextMap = Map[(Nonterminal, Set[Nonterminal]), Nonterminal]()
-    var newrules = List[Rule]()
+    var newrules = List[Rule[T]]()
 
     //println("Reach set: "+Util.setString(this.reachSet(Nonterminal("Expression")).toList))
     //    import CNFConverter._

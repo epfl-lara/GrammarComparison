@@ -18,7 +18,7 @@ import org.antlr.runtime.tree.CommonTree
  * As of now this parser can be used only with grammar where terminals are strings.
  * Because translation to antlr syntax requires conversion to strings.
  */
-class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Parser {
+class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Parser[String] {
 
   var lexerClass: Class[_] = null
   var parserClass: Class[_] = null
@@ -30,7 +30,7 @@ class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Pars
   val antlrg = {
     //create a new start symbol    
     val ns = Nonterminal(Util.freshName(Some(g.start.name)))
-    val nrs = Rule(ns, List(g.start))
+    val nrs = Rule(ns, List[Symbol[String]](g.start))
     val ng = Grammar[String](ns, nrs +: g.rules)
 
     //make non-terminals start with lower case letters, if they don't already
@@ -110,9 +110,9 @@ class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Pars
   def grammarToAntlr(gname: String) = {
 
     val tg = antlrg
-    def rsideToStr(rside: List[Symbol]) = {
+    def rsideToStr(rside: List[Symbol[String]]) = {
       rside.foldLeft("") {
-        case (acc, t: Terminal) => acc + " '" + t + "'"
+        case (acc, t: Terminal[String]) => acc + " '" + t + "'"
         case (acc, nt: Nonterminal) => acc + " " + nt
       }
     }
@@ -137,7 +137,7 @@ class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Pars
     antlrStr + "WS : [ \\t\\r\\n]+ -> skip ;" + "\nErrorChar : . ;"
   }
 
-  def parse(s: List[Terminal])(implicit gctx: GlobalContext): Boolean = {
+  def parse(s: List[Terminal[String]])(implicit gctx: GlobalContext): Boolean = {
     //for stats
     gctx.stats.updateCounter(1, "AntlrParseCalls")
     val timer = new Stats.Timer()
@@ -161,7 +161,7 @@ class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Pars
     (parser.getNumberOfSyntaxErrors == 0)
   }
 
-  def parseWithTree(s: List[Terminal])(implicit gctx: GlobalContext): Option[ParseTree] = {
+  def parseWithTree(s: List[Terminal[String]])(implicit gctx: GlobalContext): Option[ParseTree[String]] = {
     throw new IllegalStateException("Not implemented yet!")
   }
 

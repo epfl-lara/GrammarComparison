@@ -16,7 +16,7 @@ object EquivalenceVerfier {
   var smallestGrammars = List[(Grammar[_], Grammar[_])]()
   var smallestSize: Option[Int] = None
 
-  type Operator = (SententialForms, SententialForms, Terminal) => Relation
+  type Operator[T] = (SententialForms[T], SententialForms[T], Terminal[T]) => Relation[T]
 
   /**
    * TODO: Use a better model and do not inherit from Symbol
@@ -24,7 +24,7 @@ object EquivalenceVerfier {
    * Hard-coding for LL(2) grammars.
    * Need to modify this code if we need to generalize to LL(k) grammar
    */
-  sealed case class PRNonterminal(nt: Nonterminal, pr: Terminal) extends Symbol {
+  sealed case class PRNonterminal[T](nt: Nonterminal, pr: Terminal[T]) extends Symbol[T] {
     override def toString = "[" + pr + "," + nt + "]"
     def toUniqueString = toString
   }
@@ -32,15 +32,15 @@ object EquivalenceVerfier {
   /**
    * A symbol that represents unions of sentential forms that starts with a PRNonterminal
    */
-  sealed case class GroupedVariable(sforms: SententialForms) extends Symbol {
-    val splitForms = sforms.map { sf => (sf.head.asInstanceOf[PRNonterminal], sf.tail) }
+  sealed case class GroupedVariable[T](sforms: SententialForms[T]) extends Symbol[T] {
+    val splitForms = sforms.map { sf => (sf.head.asInstanceOf[PRNonterminal[T]], sf.tail) }
     override def toString = "[" + sforms.map(sf => sf.mkString(" ")).mkString("+") + "]"
     def toUniqueString = toString
   }
 
-  def senformToString(sf: SententialForm) = "[" + sf.mkString(" ") + "]"
+  def senformToString(sf: SententialForm[_]) = "[" + sf.mkString(" ") + "]"
 
-  def senformsToString(sforms: SententialForms) = {
+  def senformsToString(sforms: SententialForms[_]) = {
     if (sforms.isEmpty) "()"
     else {
       val head :: tail = sforms
@@ -53,26 +53,26 @@ object EquivalenceVerfier {
     }
   }
 
-  def first[T](sf: SententialForm, g: Grammar[T]): List[Terminal] = sf match {
-    case (t: Terminal) :: tail => List(t)
+  def first[T](sf: SententialForm[T], g: Grammar[T]): List[Terminal[T]] = sf match {
+    case (t: Terminal[T]) :: tail => List(t)
     case (nt: Nonterminal) :: tail => GNFUtilities.firstNT(nt, g)
-    case (prnt: PRNonterminal) :: tail => List(prnt.pr)
-    case (gv: GroupedVariable) :: tail =>
+    case (prnt: PRNonterminal[T]) :: tail => List(prnt.pr)
+    case (gv: GroupedVariable[T]) :: tail =>
       gv.splitForms.map {
         case (PRNonterminal(_, pr), rest) => pr
       }
     case _ => List()
   }
 
-  def concatSuffix(sforms: SententialForms, suff: SententialForm) = {
+  def concatSuffix[T](sforms: SententialForms[T], suff: SententialForm[T]) = {
     sforms.map(_ ++ suff)
   }
 
-  def concatPrefix(prex: SententialForm, sforms: SententialForms) = {
+  def concatPrefix[T](prex: SententialForm[T], sforms: SententialForms[T]) = {
     sforms.map(prex ++ _)
   }
 
-  def getRightSides[T](sym: Symbol, g: Grammar[T]): SententialForms = sym match {
+  def getRightSides[T](sym: Symbol[T], g: Grammar[T]): SententialForms[T] = sym match {
     case nt: Nonterminal => rightSides(nt, g)
     case PRNonterminal(nt, p) => rightSides(nt, g).filter(_.head == p)
     case gv @ GroupedVariable(_) => gv.splitForms.flatMap {
@@ -87,9 +87,9 @@ object EquivalenceVerfier {
    * This is defined only if the grammar is in GNF.
    * Track the prefix (expanded) and suffix (unexpanded) parts
    */
-  def derivative[T](inputWord: List[Terminal], isf: SententialForm, g: Grammar[T]): List[(SententialForm, SententialForm)] = {
+  def derivative[T](inputWord: List[Terminal[T]], isf: SententialForm[T], g: Grammar[T]): List[(SententialForm[T], SententialForm[T])] = {
 
-    def derivativeRec(word: List[Terminal], prefix: SententialForm, suffix: SententialForm): List[(SententialForm, SententialForm)] = {
+    def derivativeRec(word: List[Terminal[T]], prefix: SententialForm[T], suffix: SententialForm[T]): List[(SententialForm[T], SententialForm[T])] = {
       if (word.isEmpty)
         List((prefix, suffix))
       else {
@@ -98,7 +98,7 @@ object EquivalenceVerfier {
             if (suffix.isEmpty) List()
             else
               derivativeRec(word, List(suffix.head), suffix.tail)
-          case (head: Terminal) :: tail =>
+          case (head: Terminal[T]) :: tail =>
             if (head == word.head) derivativeRec(word.tail, tail, suffix)
             else List()
           case head :: tail =>
@@ -119,7 +119,7 @@ object EquivalenceVerfier {
    * symbols that we not used in the derivative computation from the those
    * that were used
    */
-  def derivativeWithCommonSuffix[T](word: Word, sform: SententialForm, g: Grammar[T]) = {
+  def derivativeWithCommonSuffix[T](word: Word[T], sform: SententialForm[T], g: Grammar[T]) = {
     derivative(word, sform, g) match {
       case List() => (List(), List(), List())
       case dervs =>
@@ -132,7 +132,7 @@ object EquivalenceVerfier {
     }
   }
 
-  def derivatives[T](word: Word, sforms: SententialForms, g: Grammar[T]) = {
+  def derivatives[T](word: Word[T], sforms: SententialForms[T], g: Grammar[T]) = {
     sforms.map(sform => derivativeWithCommonSuffix(word, sform, g))
   }
 
@@ -141,8 +141,8 @@ object EquivalenceVerfier {
    * that without extended symbols.
    * Note: the resulting set of sentential forms could be huge
    */
-  def removeExtendedSymbols[T](sform: SententialForm, g: Grammar[T]): List[SententialForm] = {
-    sform.foldLeft(List[SententialForm](List[Symbol]())) {
+  def removeExtendedSymbols[T](sform: SententialForm[T], g: Grammar[T]): List[SententialForm[T]] = {
+    sform.foldLeft(List[SententialForm[T]](List[Symbol[T]]())) {
       case (acc, s @ (Terminal(_) | Nonterminal(_))) =>
         concatSuffix(acc, List(s))
       case (acc, sym) =>
@@ -163,10 +163,10 @@ object EquivalenceVerfier {
 	  (GNFConverter.toGNF(g1), GNFConverter.toGNF(g2)) 
   }
   
-  sealed abstract class Relation
+  sealed abstract class Relation[T]
   //'lhs' is a sentential form of grammar1 and 'rhs' is the sentential form of grammar2
   //This checks for equivalence under the prefix 'w' 
-  case class Equals(lhs: SententialForms, rhs: SententialForms, w: Terminal) extends Relation {
+  case class Equals[T](lhs: SententialForms[T], rhs: SententialForms[T], w: Terminal[T]) extends Relation[T] {
     override def toString = {
       val lstring = senformsToString(lhs)
       val rstring = senformsToString(rhs)
@@ -175,7 +175,7 @@ object EquivalenceVerfier {
   }
   //'lhs' is a sentential form of grammar1 and 'rhs' is the sentential form of grammar2
   //This checks for inclusion of lhs in rhs under the prefix 'w' 
-  case class Subset(lhs: SententialForms, rhs: SententialForms, w: Terminal) extends Relation {
+  case class Subset[T](lhs: SententialForms[T], rhs: SententialForms[T], w: Terminal[T]) extends Relation[T] {
     override def toString = {
       val lstring = senformsToString(lhs)
       val rstring = senformsToString(rhs)
@@ -184,15 +184,15 @@ object EquivalenceVerfier {
   }
 
   object BinaryOperator {
-    def unapply(rel: Relation): Option[(Operator, SententialForms, SententialForms, Terminal)] = rel match {
-      case Equals(lhs, rhs, w) => Some((Equals, lhs, rhs, w))
-      case Subset(lhs, rhs, w) => Some((Subset, lhs, rhs, w))
+    def unapply[T](rel: Relation[T]): Option[(Operator[T], SententialForms[T], SententialForms[T], Terminal[T])] = rel match {
+      case Equals(lhs, rhs, w) => Some((Equals[T], lhs, rhs, w))
+      case Subset(lhs, rhs, w) => Some((Subset[T], lhs, rhs, w))
       case _ => None
     }
   }
 
-  sealed abstract class TransformationResult
-  case class NotApplicable(input: Relation) extends TransformationResult {
+  sealed abstract class TransformationResult[+T]
+  case class NotApplicable[T](input: Relation[T]) extends TransformationResult[T] {
     override def toString = "<NA>"
   }
   case class Failure() extends TransformationResult { //the relation does not hold (this should not be possible)
@@ -205,11 +205,11 @@ object EquivalenceVerfier {
   /*case class Any(subgoals: List[Relation]) extends TransformationResult {
     override def toString = { "<any> " + subgoals.mkString(", ") }
   }*/
-  case class All(subgoals: List[Relation]) extends TransformationResult {
+  case class All[T](subgoals: List[Relation[T]]) extends TransformationResult[T] {
     override def toString = { "<all> " + subgoals.mkString(", ") }
   }
   //allows assuming the current relation in the context i.e, it can be taken as inductive hypothesis
-  case class AllWithNewContext(subgoals: List[Relation]) extends TransformationResult {
+  case class AllWithNewContext[T](subgoals: List[Relation[T]]) extends TransformationResult[T] {
     override def toString = { "<all> " + subgoals.mkString(", ") }
   }
 }
@@ -239,7 +239,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
   val (g, genum) = {
     //union of g1 and g2
     val newstart = Nonterminal(utils.Util.freshName(Some("S")))
-    val newrules = (Rule(newstart, List(g1.start)) +: g1.rules) ++ (Rule(newstart, List(g2.start)) +: g2.rules)
+    val newrules = (Rule(newstart, List[Symbol[T]](g1.start)) +: g1.rules) ++ (Rule(newstart, List[Symbol[T]](g2.start)) +: g2.rules)
     val gram = Grammar[T](newstart, newrules)
     //inline the right-sides of the start non-terminals as they are unit productions
     val enumrules = g1.nontermToRules(g1.start).map(rl => Rule(newstart, rl.rightSide)) ++
@@ -256,7 +256,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
     nonterminals(genum).map(wordGen.getMinWord(_).get).maxBy(_.size)
   }
 
-  def getMinWord(sform: SententialForm, prefix: Terminal): Word = {
+  def getMinWord(sform: SententialForm[T], prefix: Terminal[T]): Word[T] = {
     //get the derivative of 'sform' w.r.t 'prefix' 
     val dervs = derivative(List(prefix), sform, g).map(d => d._1 ++ d._2).flatMap {
       removeExtendedSymbols(_, g)
@@ -278,10 +278,10 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
     minword
   }
 
-  def genWords(wordGen: SizeBasedRandomAccessGenerator[T], nt: Nonterminal, nos: Int): List[Word] = {
+  def genWords(wordGen: SizeBasedRandomAccessGenerator[T], nt: Nonterminal, nos: Int): List[Word[T]] = {
     //note we are using a sequential enumerator here
     val enums = (1 to maxSize).map { wordGen.getSeqEnumerator(nt, _, nos) }.toList
-    var words = List[Word]()
+    var words = List[Word[T]]()
     //get one word from each size, until we get nos samples or we exhaust all enumerators
     var sizeQueue = (1 to maxSize).toList
     while (words.size < nos && !sizeQueue.isEmpty) {
@@ -301,7 +301,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
    * Sample 'nos' words from the sentential form, starting with the given
    * prefix
    */
-  def genWords(sform: List[Symbol], nos: Int, prefix: Terminal): List[Word] = {
+  def genWords(sform: List[Symbol[T]], nos: Int, prefix: Terminal[T]): List[Word[T]] = {
     //get the derivative of 'sform' w.r.t 'prefix' 
     val dervs = derivative(List(prefix), sform, g).map(d => d._1 ++ d._2).flatMap {
       removeExtendedSymbols(_, g)
@@ -323,9 +323,9 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
   }
 
   val cykParser = new CYKParser(g.cnfGrammar)
-  def parseWithSententialForms(sforms: List[SententialForm], words: Words) = {
+  def parseWithSententialForms(sforms: List[SententialForm[T]], words: Words[T]) = {
     val plainSforms = sforms.flatMap(removeExtendedSymbols(_, g))
-    words.foldLeft(Some((List[Word](), List[Word]())): Option[(List[Word], List[Word])]) {
+    words.foldLeft(Some((List[Word[T]](), List[Word[T]]())): Option[(List[Word[T]], List[Word[T]])]) {
       case _ if gctx.abort =>
         None
       case (None, _) =>
@@ -346,17 +346,17 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
    * Can we relax the precondition ?
    * If yes how does this interact with the conversion to standard relation form ?
    */
-  def Atrans(rel: Relation): TransformationResult = rel match {
+  def Atrans(rel: Relation[T]): TransformationResult[T] = rel match {
     case Equals(List(_), List(_), _) | Subset(List(_), _, _) =>
       val BinaryOperator(op, lhsSet @ List(_), rhsSet, w) = rel
       //here, we can safely assume that lhs and rhs start with 
       //nonterminals as the prefix terminals are stripped away           
       val newrels = alphabet.map(b => {
-        def expand(sforms: SententialForms) = sforms.flatMap {
+        def expand(sforms: SententialForms[T]) = sforms.flatMap {
           case head :: tail =>
             //pick all productions of 'A' from which it is possible to derive 'wb'
             //note: for LL(k) grammars there will be unique such productions                                   
-            val rightSidesForWB = getRightSides(head, g).foldLeft(List[SententialForm]()) {
+            val rightSidesForWB = getRightSides(head, g).foldLeft(List[SententialForm[T]]()) {
               case (acc, rside) =>
                 val derv = derivative(List(w, b), rside ++ tail, g)
                 if (derv.isEmpty) acc
@@ -370,7 +370,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
         val newrhs = expand(rhsSet)
         //perform the replacement step here
         val replacedLHS = newlhs.flatMap {
-          case lhs @ _ if lhs(0).isInstanceOf[Terminal] || lhs(0).isInstanceOf[Nonterminal] =>
+          case lhs @ _ if lhs(0).isInstanceOf[Terminal[T]] || lhs(0).isInstanceOf[Nonterminal] =>
             List(lhs)
           case PRNonterminal(nt, p) :: tail if p == b =>
             List(nt :: tail)
@@ -391,32 +391,32 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
       NotApplicable(rel)
   }
 
-  def Btrans: Relation => TransformationResult = {
+  def Btrans: Relation[T] => TransformationResult[T] = {
     if (ll2grammars)
       BtransLL2
     else
       BtransNonLL2
   }
 
-  def restrictSForms(sforms: List[SententialForm], b: Terminal) = {
+  def restrictSForms(sforms: List[SententialForm[T]], b: Terminal[T]) = {
     sforms.collect {
       case (head: Nonterminal) :: tail if first(List(head), g).contains(b) =>
         PRNonterminal(head, b) +: tail
-      case (head: Terminal) :: tail if head == b => tail
+      case (head: Terminal[T]) :: tail if head == b => tail
     }
   }
   /**
    * B transformation or split transformation for LL(2).
    * Here, both the lhs and rhs are assumed to be singleton
    */
-  def BtransLL2(rel: Relation): TransformationResult = rel match {
+  def BtransLL2(rel: Relation[T]): TransformationResult[T] = rel match {
     case Equals(List(lhs), List(rhs), w) =>
       if (lhs.size > maxMinWord.size) { //this is the condition used by Hopcroft, Korenjak       
         val gamma = lhs.tail
         //here, we can assume that lhs starts with a non-terminal
         val head = lhs.head match {
           case nt: Nonterminal =>
-            (nt.asInstanceOf[Symbol], getMinWord(List(nt), w)) //the shortest word should have size  k-1, but that will hold if it has 'w' as a prefix          
+            (nt.asInstanceOf[Symbol[T]], getMinWord(List(nt), w)) //the shortest word should have size  k-1, but that will hold if it has 'w' as a prefix          
         }
         val A = head._1
         val Aminword = head._2
@@ -467,8 +467,8 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
    * The algorithm is sound but incomplete.
    * In the sequel, we can safely assume that there are no grouped non-terminals
    */
-  var noImmediateBtrans: Option[Relation] = None
-  def BtransNonLL2(rel: Relation): TransformationResult = rel match {
+  var noImmediateBtrans: Option[Relation[T]] = None
+  def BtransNonLL2(rel: Relation[T]): TransformationResult[T] = rel match {
     case Equals(List(_), List(_), _) | Subset(List(_), _, _) if noImmediateBtrans != Some(rel) =>
       //reset noImmediateBtrans
       noImmediateBtrans = None
@@ -477,10 +477,10 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
         val gamma = lhs.tail
         val head = lhs.head match {
           case nt: Nonterminal =>
-            (nt.asInstanceOf[Symbol], getMinWord(List(nt), w))
+            (nt.asInstanceOf[Symbol[T]], getMinWord(List(nt), w))
           //the shortest word should have size  k-1, but that will hold if it has 'w' as a prefix
           case prnt @ PRNonterminal(nt, x) if x == w =>
-            (prnt.asInstanceOf[Symbol], getMinWord(List(nt), w))
+            (prnt.asInstanceOf[Symbol[T]], getMinWord(List(nt), w))
         }
         val A = head._1
         val Aminword = head._2
@@ -504,8 +504,8 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
         }
 
         //construct a type 2 relation (or S relation) given deltasRho and alphaRho
-        def constructSRelation(deltasRho: List[SententialForm],
-          alphaRho: SententialForm): Relation = {
+        def constructSRelation(deltasRho: List[SententialForm[T]],
+          alphaRho: SententialForm[T]): Relation[T] = {
           val restrictedDeltasRhos = firstOfGamma.flatMap(b => {
             restrictSForms(deltasRho, b)
           })
@@ -561,8 +561,8 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
   /**
    * A transformation that handles epsilons in the relations
    */
-  val emptyForm = List[Symbol]()
-  def epsilonTrans(rel: Relation): TransformationResult = rel match {
+  val emptyForm = List[Symbol[T]]()
+  def epsilonTrans(rel: Relation[T]): TransformationResult[T] = rel match {
     case Equals(lset, rset, w) =>
       if (lset.isEmpty && rset.isEmpty)
         Success()
@@ -597,13 +597,13 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
   //a temporary counter 
   var usedTestcases = false
 
-  def lengthTrans(rel: Relation): TransformationResult = {
+  def lengthTrans(rel: Relation[T]): TransformationResult[T] = {
 
-    def minSForm(sforms: SententialForms) = {
-      sforms.min(Ordering.by((sform: SententialForm) => sform.size))
+    def minSForm(sforms: SententialForms[T]) = {
+      sforms.min(Ordering.by((sform: SententialForm[T]) => sform.size))
     }
 
-    def minWordSize(sforms: SententialForms, prefix: Terminal) = {
+    def minWordSize(sforms: SententialForms[T], prefix: Terminal[T]) = {
       sforms.map(getMinWord(_, prefix).size).min
     }
 
@@ -658,7 +658,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
     }
   }
 
-  def distributeOverInclusion(rel: Relation): TransformationResult = rel match {
+  def distributeOverInclusion(rel: Relation[T]): TransformationResult[T] = rel match {
     case Subset(lforms, rhs, w) if (lforms.size > 1) =>
       val newrels = lforms.map(lform => Subset(List(lform), rhs, w))
       All(newrels)
@@ -666,7 +666,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
       NotApplicable(rel)
   }
 
-  def equalityToInclusion(rel: Relation): TransformationResult = rel match {
+  def equalityToInclusion(rel: Relation[T]): TransformationResult[T] = rel match {
     case Equals(lhs, rhs, w) =>
       //when the control reaches here both lhs and rhs have atleast two sentential forms
       val newrels = List(Subset(lhs, rhs, w), Subset(rhs, lhs, w))
@@ -678,7 +678,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
    * This is a lossy transformation as it is driven by counter-examples.
    * TODO: this makes certain verification proofs not go through ?
    */
-  def simplifyUsingTestcases(rel: Relation): TransformationResult =
+  def simplifyUsingTestcases(rel: Relation[T]): TransformationResult[T] =
     rel match {
       case Subset(List(lhs), rset, w) if rset.size > 1 =>
         val lwords = genWords(lhs, noTests, w).toSet
@@ -705,7 +705,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
           Failure()
         } else {
           //in this case we can check if some elements can be removed from rset
-          var newrset = List[SententialForm]()
+          var newrset = List[SententialForm[T]]()
           var uncoveredElements = lwords
           while (!uncoveredElements.isEmpty) {
             //choose a set from 'rset' that covers the most number of uncovered elements
@@ -722,8 +722,8 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
       case _ => NotApplicable(rel)
     }
 
-  def lift(f: Relation => TransformationResult): (TransformationResult => TransformationResult) = {
-    val newf = (res: TransformationResult) => res match {
+  def lift(f: Relation[T] => TransformationResult[T]): (TransformationResult[T] => TransformationResult[T]) = {
+    val newf = (res: TransformationResult[T]) => res match {
       case NotApplicable(rel) => f(rel)
       case _ => res
     }
@@ -732,7 +732,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
 
   //for debugging
   var dumpTRes = false
-  def dumpTResult(phaseName: String)(res: TransformationResult): TransformationResult = {
+  def dumpTResult(phaseName: String)(res: TransformationResult[T]): TransformationResult[T] = {
     if (opctx.debugEquivVerifier > 0) {
       res match {
         case NotApplicable(_) => res
@@ -748,7 +748,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
   }
 
   //in the order of increasing priority  
-  def transformations(context: Set[Relation]) = {
+  def transformations(context: Set[Relation[T]]) = {
     dumpTRes = true //an ungly way of managing state TODO: fix this
 
     epsilonTrans _ andThen
@@ -759,7 +759,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
         if (opctx.useTestcasesInVerification && !disableTests)
           lift(simplifyUsingTestcases)
         else
-          (x: TransformationResult) => x //id function
+          (x: TransformationResult[T]) => x //id function
       } andThen
       dumpTResult("Testcases") andThen
       lift(Btrans) andThen
@@ -777,19 +777,19 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
    * This is expensive as it makes comparisons over lists
    * TODO: can this be made efficient ?
    */
-  def makeDistinct(rels: List[Relation]): List[Relation] = {
+  def makeDistinct(rels: List[Relation[T]]): List[Relation[T]] = {
     rels.map(rel => {
       val BinaryOperator(op, lset, rset, w) = rel
       op(lset.distinct, rset.distinct, w)
     }).distinct
   }
 
-  var provenRelations = Set[Relation]()
-  def removeProvenRelations(rels: List[Relation]): List[Relation] = {
+  var provenRelations = Set[Relation[T]]()
+  def removeProvenRelations(rels: List[Relation[T]]): List[Relation[T]] = {
     rels.filterNot(provenRelations.contains _)
   }
 
-  def removeImpliedRelations(context: Set[Relation])(rels: List[Relation]): List[Relation] = {
+  def removeImpliedRelations(context: Set[Relation[T]])(rels: List[Relation[T]]): List[Relation[T]] = {
     rels.filterNot(rel => rel match {
       case Subset(lhs, rhs, w) =>
         val rset = rhs.toSet
@@ -810,13 +810,13 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
     })
   }
 
-  def filters(context: Set[Relation]) = {
+  def filters(context: Set[Relation[T]]) = {
     makeDistinct _ andThen
       removeProvenRelations andThen
       removeImpliedRelations(context)
   }
 
-  def verifyRelation(rel: Relation, context: Set[Relation]): Option[Boolean] = {
+  def verifyRelation(rel: Relation[T], context: Set[Relation[T]]): Option[Boolean] = {
     //if there has been a timeout and abort
     if (stop || gctx.abort) {
       if (opctx.printVerifcationFeedback)
@@ -876,7 +876,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
                     if (opctx.debugEquivVerifier > 0)
                       printDebugMessage("Failed to prove", newrel.toString())
                     //break this down in to new subrels, if we are not in the LL2 world                    
-                    val subrels: List[Relation] = List(Subset(lhs, rhs, w), Subset(rhs, lhs, w))
+                    val subrels: List[Relation[T]] = List(Subset(lhs, rhs, w), Subset(rhs, lhs, w))
                     val subrelsToProve = filters(newcontext)(subrels)
                     subrelsToProve.foldLeft(Some(true): Option[Boolean])((acc, subrel) => acc match {
                       case Some(true) =>

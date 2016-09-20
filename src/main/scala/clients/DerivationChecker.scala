@@ -5,17 +5,14 @@ import CFGrammar._
 
 object DerivationChecker {
 
-  type Word = List[Terminal]
-  type SententialForm = List[Symbol]
-
-  sealed abstract class DerivationFeedback
+  sealed abstract class DerivationFeedback[+T]
   case class Correct() extends DerivationFeedback
   case class InvalidStart() extends DerivationFeedback
   case class InvalidEnd() extends DerivationFeedback
-  case class WrongStep(from: SententialForm, to: SententialForm, msg: String) extends DerivationFeedback
+  case class WrongStep[T](from: SententialForm[T], to: SententialForm[T], msg: String) extends DerivationFeedback[T]
   case class Other(msg: String) extends DerivationFeedback
   
-  def checkLeftMostDerivation[T](word: List[Terminal], steps: List[SententialForm], g: Grammar[T]): DerivationFeedback = {
+  def checkLeftMostDerivation[T](word: List[Terminal[T]], steps: List[SententialForm[T]], g: Grammar[T]): DerivationFeedback[T] = {
     if (steps.isEmpty) {
       Other("No derivation is given")
     } else {
@@ -24,7 +21,7 @@ object DerivationChecker {
         InvalidStart()
       } else {
         //find a step that violates the derivation	      
-        val (fb, last) = steps.tail.foldLeft((None: Option[DerivationFeedback], start)) {
+        val (fb, last) = steps.tail.foldLeft((None: Option[DerivationFeedback[T]], start)) {
           case ((None, prev), step) =>
             //pick the first nonterminal of 'prev'
             val firstntIndex = prev.indexWhere(_.isInstanceOf[Nonterminal])

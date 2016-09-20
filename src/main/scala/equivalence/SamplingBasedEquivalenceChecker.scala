@@ -70,7 +70,7 @@ class SamplingBasedEquivalenceChecker(g1: Grammar[String])(implicit gctx: Global
     val refEnums = (startSize to maxSize).map { sz => refGen.getSamplingEnumerator(refg.fromCNF.start, sz, nos) }.toArray
     val gEnums = (startSize to maxSize).map { sz => gGen.getSamplingEnumerator(gEG.start, sz, nos) }.toArray
 
-    var ctrExamples = List[EquivalenceResult]()
+    var ctrExamples = List[EquivalenceResult[String]]()
     var toExploreSizes = (startSize to maxSize).toList
     val rand = new java.util.Random()
     break = false
@@ -200,7 +200,7 @@ class SamplingBasedEquivalenceChecker(g1: Grammar[String])(implicit gctx: Global
     //construct a bunch of sampling enumerators for each size              
     val gEnums = (startSize to maxSize).map { sz => gGen.getSamplingEnumerator(gEG.start, sz, nos) }.toArray
 
-    var ctrExamples = List[Word]()
+    var ctrExamples = List[Word[String]]()
     var toExploreSizes = (startSize to maxSize).toList
     val rand = new java.util.Random()
     var break = false
@@ -269,7 +269,7 @@ class SamplingBasedEquivalenceChecker(g1: Grammar[String])(implicit gctx: Global
   /**
    * Checks if the predicate holds for strings sampled at random
    */
-  def checkPredicateHolds(pred: Word => Boolean): List[Word] = {
+  def checkPredicateHolds(pred: Word[String] => Boolean): List[Word[String]] = {
 
     var stop = false
     val task = Util.scheduleTask(() => { stop = true }, opctx.timeOut)
@@ -281,7 +281,7 @@ class SamplingBasedEquivalenceChecker(g1: Grammar[String])(implicit gctx: Global
     var toExploreSizes = (startSZ to maxSZ).toList
     val rand = new java.util.Random()
     var break = false
-    var ctrex = List[Word]()
+    var ctrex = List[Word[String]]()
     while (!break && !toExploreSizes.isEmpty && !stop && !gctx.abort) {
       val exploreIndex = rand.nextInt(toExploreSizes.size) //randomly sample a size
       val size = toExploreSizes(exploreIndex)

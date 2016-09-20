@@ -24,9 +24,9 @@ object GNFConverter {
    * The first component of the return value is the modified right recursive rules
    * and the second component are the Z rules
    */
-  def removeLeftRecursion(ntrules: List[Rule], nt: Nonterminal): (List[Rule], List[Rule]) = {
+  def removeLeftRecursion[T](ntrules: List[Rule[T]], nt: Nonterminal): (List[Rule[T]], List[Rule[T]]) = {
 
-    def isLeftRecursive(rule: Rule): Boolean = rule match {
+    def isLeftRecursive(rule: Rule[T]): Boolean = rule match {
       case Rule(lhs, head :: _) if lhs == head => true
       case _ => false
     }
@@ -38,15 +38,15 @@ object GNFConverter {
       val alphas = leftRecur.map(_.rightSide.tail)
       val betas = rest.map(_.rightSide)
       val Z = Nonterminal(Util.freshName(Some(nt.name)))
-      (rest ++ betas.map(beta => Rule(nt, beta :+ Z)), 
-        alphas.flatMap(alpha => List(Rule(Z, alpha :+ Z), Rule(Z, alpha))))
+      (rest ++ betas.map(beta => Rule[T](nt, beta :+ Z)), 
+        alphas.flatMap(alpha => List(Rule[T](Z, alpha :+ Z), Rule[T](Z, alpha))))
     }
   }
 
-  def inlineFirstNonterminal(ruleList: List[Rule], rule: Rule): List[Rule] = rule match {
+  def inlineFirstNonterminal[T](ruleList: List[Rule[T]], rule: Rule[T]): List[Rule[T]] = rule match {
     case rule @ Rule(lhs, ((head: Nonterminal) :: tail)) =>
       val inlinedRules = ruleList.collect {
-        case Rule(`head`, rightSide) => Rule(lhs, rightSide ++ tail)
+        case Rule(`head`, rightSide) => Rule[T](lhs, rightSide ++ tail)
       }
       inlinedRules
     case _ => List(rule)
@@ -70,8 +70,8 @@ object GNFConverter {
     val ntIndex = nonterms.zipWithIndex.toMap    
 
     //convert every rule A_i -> A_j \alpha such that j >= i
-    def orderRule(ruleList: List[Rule], rule: Rule): List[Rule] = rule match {
-      case rule @ Rule(_, ((_: Terminal) :: _)) =>
+    def orderRule(ruleList: List[Rule[T]], rule: Rule[T]): List[Rule[T]] = rule match {
+      case rule @ Rule(_, ((_: Terminal[T]) :: _)) =>
         List(rule)
       case rule @ Rule(lhs, ((head: Nonterminal) :: _)) if ntIndex(lhs) <= ntIndex(head) =>
         List(rule)
@@ -80,7 +80,7 @@ object GNFConverter {
         //inline 'head' and repeat the above process
         inlineFirstNonterminal(ruleList, rule).flatMap(inlRule => orderRule(ruleList, inlRule))
     }    
-    val (modrules, zrules) = nonterms.foldLeft((List[Rule](), List[Rule]())) {
+    val (modrules, zrules) = nonterms.foldLeft((List[Rule[T]](), List[Rule[T]]())) {
       case ((prevNTrules, zrules), nt) =>
         val ntrules = grules.filter(_.leftSide == nt)
         val newrules = ntrules.flatMap(orderRule(prevNTrules, _))        
@@ -99,7 +99,7 @@ object GNFConverter {
     
     //start from An and substitute the first nonterminal if it exists by its right sides
     //Assuming removeLeftRecursion does not change the order of rules
-    val gnfRules = orderedRules.foldRight(List[Rule]())((rule, acc) => {
+    val gnfRules = orderedRules.foldRight(List[Rule[T]]())((rule, acc) => {
       val newrules = inlineFirstNonterminal(acc, rule)
       if (opctx.debugGNFConversion)
         printDebugMessage("InliningFirst", "(" + rule + ") --> " + newrules.mkString(","))
@@ -107,7 +107,7 @@ object GNFConverter {
     })           
     
     //epsilon rule needs to be added  back  if it was in the original grammar
-    val epsilonRule = Rule(g.start, List())
+    val epsilonRule = Rule[T](g.start, List())
     val finalRules = if (g.rules.contains(epsilonRule)) {
       epsilonRule +: gnfRules
     } else

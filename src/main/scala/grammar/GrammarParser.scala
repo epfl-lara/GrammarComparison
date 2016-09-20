@@ -22,17 +22,17 @@ class GrammarParser extends RegexParsers {
    */
   def regId = symbol ^^ {
     case name if name == "\"\"" => RegEmpty()
-    case name => new GenericRegId(name)
+    case name => new Sym[String](name)
   }
   def nontermRegId = nontermSymbol ^^ { case name => new NontermId(name) }
 
   //Precedence: () precedes unary operators,*,?,| precedes '.' precedes '|'
   def atom = regId | ("(" ~> regExp <~ ")")
-  def closure = ("*") ^^ { case _ => RegClosure.apply _ }
-  def option = ("?") ^^ { case _ => RegOption.apply _ }
-  def plus = ("+") ^^ { case _ => RegPlus.apply _ }
+  def closure = ("*") ^^ { case _ => RegClosure[String] _ }
+  def option = ("?") ^^ { case _ => RegOption[String] _ }
+  def plus = ("+") ^^ { case _ => RegPlus[String] _ }
   def op = ((closure | option | plus)*) ^^ {
-    case opList => (re: RegExp) => opList.foldLeft(re)((acc, oper) => oper(acc))
+    case opList => (re: RegExp[String]) => opList.foldLeft(re)((acc, oper) => oper(acc))
   }
   def unaryOp = (atom ~ op) ^^ { case re ~ oper => oper(re) }
   def concat = ((unaryOp)+) ^^ {
@@ -44,7 +44,7 @@ class GrammarParser extends RegexParsers {
     case Some(v) => v
   }*/
   //here, we allow ors to be split into new lines
-  def regExp: Parser[RegExp] = (concat ~ (("""\s*\|""".r ~> concat)*)) ^^ { 
+  def regExp: Parser[RegExp[String]] = (concat ~ (("""\s*\|""".r ~> concat)*)) ^^ { 
     case first ~ rest if rest.isEmpty => first
     case first ~ rest => RegOr(first +: rest)
   }

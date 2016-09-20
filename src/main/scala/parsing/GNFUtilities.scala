@@ -49,9 +49,9 @@ object GNFUtilities {
   /**
    * assuming the grammar is in GNF form
    */
-  def firstNT[T](nt: Nonterminal, g: Grammar[T]): List[Terminal] = {
+  def firstNT[T](nt: Nonterminal, g: Grammar[T]): List[Terminal[T]] = {
     g.nontermToRules(nt).collect {
-      case Rule(_, (t: Terminal) :: tail) => t
+      case Rule(_, (t: Terminal[T]) :: tail) => t
       case r @ Rule(_, (nt: Nonterminal) :: tail) =>
         throw new IllegalStateException("Rule: " + r + " is not in GNF form")
     }.distinct
@@ -71,7 +71,7 @@ object GNFUtilities {
             throw new IllegalStateException("Found epsilon rule for non-start symbol: " + rl)
         }
         val headToRules = rules.groupBy {
-          case Rule(_, (head: Terminal) :: tail) => head
+          case Rule(_, (head: Terminal[T]) :: tail) => head
           case rl @ _ =>
             throw new IllegalStateException("Rule not in GNF: " + rl)
         }
@@ -81,13 +81,13 @@ object GNFUtilities {
               case Rule(_, _ :: s :: tail) => s
             }
             //the first set of each of the seconds should be disjoint              
-            var firsts = Set[Terminal]()
+            var firsts = Set[Terminal[T]]()
             seconds.foreach {sym =>
               if (!break) 
                 sym match {
-                  case t: Terminal if firsts(t) =>
+                  case t: Terminal[T] if firsts(t) =>
                     break = true
-                  case t: Terminal =>
+                  case t: Terminal[T] =>
                     firsts += t
                   case nt: Nonterminal =>
                     val ntfirsts = firstNT(nt, g).toSet
@@ -109,9 +109,9 @@ object GNFUtilities {
    */
   def leftFactor[T](g: Grammar[T]): Grammar[T] = {
 
-    def factorOnce(rules: List[Rule]) = {
-      var modRules = List[Rule]()
-      var newRules = List[Rule]()
+    def factorOnce(rules: List[Rule[T]]) = {
+      var modRules = List[Rule[T]]()
+      var newRules = List[Rule[T]]()
       rules.groupBy(_.leftSide).foreach {
         case (nt, rules) =>
           val headToRules = rules.groupBy {
@@ -119,7 +119,7 @@ object GNFUtilities {
             case Rule(_, head :: tail) => head
           }
           headToRules.foreach {
-            case (h: Symbol, rules) =>
+            case (h: Symbol[T], rules) =>
               val (rulesToFactor, rest) = rules.partition(_.rightSide.size >= 2)
               if (rulesToFactor.size >= 2) {
                 //create a new non-terminal to produce the suffix
@@ -136,7 +136,7 @@ object GNFUtilities {
       (modRules, newRules)
     }
     var rulesToCheck = g.rules
-    var rulesTransformed = List[Rule]()
+    var rulesTransformed = List[Rule[T]]()
     while (!rulesToCheck.isEmpty) {
       val (modrules, newrules) = factorOnce(rulesToCheck)
       rulesToCheck = newrules

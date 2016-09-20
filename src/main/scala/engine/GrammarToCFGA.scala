@@ -19,7 +19,7 @@ object GrammarToCFGA {
       acc + nt +
       g.nontermToRules(nt).foldLeft(""){(acc,rl) => 
        acc + " : " + rl.rightSide.foldLeft(""){
-        case (acc, t : Terminal) => acc + " \""+t+"\""
+        case (acc, t : Terminal[String]) => acc + " \""+t+"\""
         case (acc, nt : Nonterminal) => acc + " "+ nt
       } + ";\n" 
     } + "\n" }

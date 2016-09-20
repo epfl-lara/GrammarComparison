@@ -9,13 +9,16 @@ object BNFConverter {
 
   def usesRegOp[T](bnf: BNFGrammar[T]) = {
 
-    def hasRegOp(regex: RegExp): Boolean = regex match {
+    /**
+     * Checks if the regex has star or option operaton which is not a part of context-free grammars
+     */
+    def hasRegOp(regex: RegExp[T]): Boolean = regex match {
       case RegOr(subs) =>
         subs.exists(hasRegOp)
       case RegConcat(subs) =>
         subs.exists(hasRegOp)
-      case _: GenericRegId | RegEmpty() => false
-      case _                            => true
+      case _: Sym[_] | RegEmpty() => false
+      case _                      => true
     }
     bnf.rules.exists(rule => hasRegOp(rule.rightSide))
   }
@@ -36,19 +39,19 @@ object BNFConverter {
       case rule @ BNFRule(leftSide, rightSide) => {
 
         // From a Regexp, returns a symbol representing this regexp
-        def regexToSymbol(re: RegExp): (Symbol, List[Rule]) = re match {
+        def regexToSymbol(re: RegExp[T]): (Symbol[T], List[Rule[T]]) = re match {
           case nid: NontermId =>
             if (!nonterms.contains(nid.name))
-              throw new InvalidGrammarException(s"Nonterminal $nid does not have any rules!")                                        
+              throw new InvalidGrammarException(s"Nonterminal $nid does not have any rules!")
             (Nonterminal(nid.name), List())
-            
-          case rid: GenericRegId =>
-            rid.obj match {
-              case s: String if nonterms.contains(s) => // this is a non-terminal
-                (Nonterminal(s), List())
+
+          case s: Sym[T] =>
+            s.obj match {
+              case str: String if nonterms.contains(str) => // this is a non-terminal
+                (Nonterminal(str), List())
               case o =>
-                (Terminal(rid.obj), List())
-            }            
+                (Terminal(o.asInstanceOf[T]), List()) // note: here we simply cast to `T` (this should succeed)
+            }
 
           case RegClosure(sube) =>
             //create a new nonterminal 'C'
@@ -61,7 +64,7 @@ object BNFConverter {
             //create a new nonterminal 'C'
             val S = getFreshNonterm("plus")
             sube match {
-              case sube: GenericRegId =>
+              case sube: Sym[_] =>
                 val newrules = regexToRules(S, RegOr(List(sube, RegConcat(List(sube, new NontermId(S.name))))))
                 (S, newrules)
               case _ =>
@@ -90,9 +93,9 @@ object BNFConverter {
         }
 
         // From a Regexp, returns a list of symbols which if concatenated represent the regex 
-        def regexToRightSide(re: RegExp): (List[Symbol], List[Rule]) = re match {
+        def regexToRightSide(re: RegExp[T]): (List[Symbol[T]], List[Rule[T]]) = re match {
           case RegConcat(args) =>
-            args.foldLeft((List[Symbol](), List[Rule]()))((acc, arg) => {              
+            args.foldLeft((List[Symbol[T]](), List[Rule[T]]()))((acc, arg) => {
               val (syms, newrules) = regexToRightSide(arg)
               (acc._1 ++ syms, acc._2 ++ newrules)
             })
@@ -104,12 +107,12 @@ object BNFConverter {
         }
 
         // From a rule leftSide -> Regexp, returns a list of corresponding rules.
-        def regexToRules(leftSide: Nonterminal, re: RegExp): List[Rule] = re match {
+        def regexToRules(leftSide: Nonterminal, re: RegExp[T]): List[Rule[T]] = re match {
           case RegOr(args) =>
             args.flatMap(regexToRules(leftSide, _))
           case _ =>
             val (syms, newrules) = regexToRightSide(re)
-            Rule(leftSide, syms) +: newrules
+            Rule[T](leftSide, syms) +: newrules
         }
         val nt = Nonterminal(leftSide.toString)
         regexToRules(nt, rightSide)

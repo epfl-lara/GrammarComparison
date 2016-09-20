@@ -27,11 +27,11 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
    * Returns a list of feedbacks which could be used to make the grammar correct using native symbols.
    * @param cnfG The grammar in CNF format
    */
-  def repair(cnfG: Grammar[T], result: EquivalenceResult): Grammar[T] = {
+  def repair(cnfG: Grammar[T], result: EquivalenceResult[T]): Grammar[T] = {
     require(isInCNF(cnfG))
 
     //perform repair recursively until the grammar becomes equivalent    
-    def recRepair(g: Grammar[T], result: EquivalenceResult): Grammar[T] = {
+    def recRepair(g: Grammar[T], result: EquivalenceResult[T]): Grammar[T] = {
       val newg = result match {
         case NotEquivalentNotAcceptedBySolution(unparsableWord) =>
           val newg = repairSubsetGrammar(g, unparsableWord)
@@ -58,7 +58,7 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
   /**
    * Applies repair one step and constructs a feedback
    */
-  def hint(cnfG: Grammar[T], result: EquivalenceResult) = {
+  def hint(cnfG: Grammar[T], result: EquivalenceResult[T]) = {
     require(isInCNF(cnfG))
 
     val simpg = cnfG.fromCNF 
@@ -71,7 +71,7 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
 
       case _ =>
         //no repair is required or possible here.
-        NoRepair("Invalid Arguments.")
+        NoRepair[T]("Invalid Arguments.")
     }
     val newg = applyFixes(simpg, List(feedback))    
     (newg, List(feedback))
@@ -89,12 +89,12 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
     removeFeedbacks ++ replaceFeedbacks
   }*/
 
-  def repairSupersetGrammar(initGrammar: Grammar[T], initWord: List[Terminal]): Grammar[T] = {
+  def repairSupersetGrammar(initGrammar: Grammar[T], initWord: List[Terminal[T]]): Grammar[T] = {
 
     var iterations = 0
-    var wordsRuledout = List[List[Terminal]]()
+    var wordsRuledout = List[List[Terminal[T]]]()
 
-    def rec(g: Grammar[T], ungenWord: List[Terminal]): Grammar[T] = {
+    def rec(g: Grammar[T], ungenWord: List[Terminal[T]]): Grammar[T] = {
 
       //check if we need to abort
 
@@ -133,10 +133,10 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
     finalg
   }
 
-  def repairSupersetStep(g: Grammar[T], ungenWord: List[Terminal]): GrammarFeedback = {
+  def repairSupersetStep(g: Grammar[T], ungenWord: List[Terminal[T]]): GrammarFeedback[T] = {
     if (ungenWord == List()) {
       //handle epsilon specially
-      val epsilonRule = Rule(g.start, List())
+      val epsilonRule = Rule(g.start, List[Symbol[T]]())
       RemoveRules(List(epsilonRule))
     } else {
       val feedback = (new ContextBasedSuperSetRepair(g, ungenWord, equivChecker)).eliminateAParseTree()
@@ -144,7 +144,7 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
     }
   }
 
-  def applyFixes(ing: Grammar[T], fixes: List[GrammarFeedback]): Grammar[T] = {
+  def applyFixes(ing: Grammar[T], fixes: List[GrammarFeedback[T]]): Grammar[T] = {
     val newg = fixes.foldLeft(ing)((g, fix) => fix match {
       case AddAllRules(rules) =>
         Grammar(g.start, g.rules ++ rules)
@@ -167,10 +167,10 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
   }
 
   val subsetRepair = new SubsetRepair(equivChecker)
-  def repairSubsetStep(g: Grammar[T], unparsableWord: List[Terminal]) = {
+  def repairSubsetStep(g: Grammar[T], unparsableWord: List[Terminal[T]]) = {
     if (unparsableWord == List()) {
       //handle epsilon specially
-      val epsilonRule = Rule(g.start, List())
+      val epsilonRule = Rule(g.start, List[Symbol[T]]())
       AddAllRules(List(epsilonRule))
     } else {
       val feedback = subsetRepair.makeParsable(g, unparsableWord)
@@ -178,9 +178,9 @@ class Repairer[T](equivChecker: EquivalenceChecker[T])
     }
   }
 
-  def repairSubsetGrammar(initg: Grammar[T], initWord: List[Terminal]): Grammar[T] = {
+  def repairSubsetGrammar(initg: Grammar[T], initWord: List[Terminal[T]]): Grammar[T] = {
 
-    def rec(g: Grammar[T], unparsableWord: List[Terminal]): Grammar[T] = {
+    def rec(g: Grammar[T], unparsableWord: List[Terminal[T]]): Grammar[T] = {
 
       if (context.debugRepair > 0)
         println("Enabling acceptance of string: " + wordToString(unparsableWord))

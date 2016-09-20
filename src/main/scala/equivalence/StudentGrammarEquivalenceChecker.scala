@@ -46,7 +46,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar[String])(implicit gctx: Globa
     val maxSize = opctx.maxSize
     val gGen = new SizeBasedRandomAccessGenerator(g.fromCNF, maxSize)
     val nos = opctx.nOfTestcases
-    var ctrExamples = List[EquivalenceResult]()
+    var ctrExamples = List[EquivalenceResult[String]]()
 
     val gCYK = new CYKParser(g.cnfGrammar)
     val gparser = if (opctx.useAntlrForStudentGrammars) new AntlrParserInterpreted(g)
@@ -179,7 +179,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar[String])(implicit gctx: Globa
     val maxSize = opctx.maxSize
     val gGen = new SizeBasedRandomAccessGenerator(g.fromCNF, maxSize)
     val nos = opctx.nOfTestcases
-    var ctrExamples = List[Word]()
+    var ctrExamples = List[Word[String]]()
 
     var break = false
     for (size <- startSize to maxSize) if (!break && !stop) {
@@ -255,7 +255,7 @@ class StudentGrammarEquivalenceChecker(g1: Grammar[String])(implicit gctx: Globa
     val gparser = if (opctx.useAntlrForStudentGrammars) new AntlrParserInterpreted(g)
     else gCYK
 
-    var ctrExamples = List[Word]()
+    var ctrExamples = List[Word[String]]()
     var break = false
     for (size <- startSize to maxSize) if (!break && !stop) {
 

@@ -17,43 +17,43 @@ import scala.collection.mutable.MultiMap
 import scala.collection.mutable.HashMap
 
 object RepairResult {
-  sealed trait CNFFeedback
-  sealed trait GrammarFeedback
+  sealed trait CNFFeedback[T]
+  sealed trait GrammarFeedback[T]
   sealed trait BNFFeedback
 
-  case class NoRepair(reason: String) extends GrammarFeedback with CNFFeedback with BNFFeedback {
+  case class NoRepair[T](reason: String) extends GrammarFeedback[T] with CNFFeedback[T] with BNFFeedback {
     override def toString = reason
   }
   
-  //CNF repair feedback
-  case class CNFRemove(r: Rule, repairRule : Option[Rule] = None) extends CNFFeedback {
+  //CNF repair feedback    
+  case class CNFRemove[T](r: Rule[T], repairRule : Option[Rule[T]] = None) extends CNFFeedback[T] {
     override def toString = " Remove rule " + r
   }
-  case class CNFAdd(l: List[Rule]) extends CNFFeedback {
+  case class CNFAdd[T](l: List[Rule[T]]) extends CNFFeedback[T] {
     override def toString = " Add rules " + l.mkString("\n")
   }
-  case class CNFSplit(old: Rule, news: List[Rule], repRule: Rule) extends CNFFeedback {
+  case class CNFSplit[T](old: Rule[T], news: List[Rule[T]], repRule: Rule[T]) extends CNFFeedback[T] {
     override def toString = " Replace \n" + old + "\n by \n" + news.mkString("\n")
   }
-  case class CNFExpand(old: Rule, news: List[Rule]) extends CNFFeedback {
+  case class CNFExpand[T](old: Rule[T], news: List[Rule[T]]) extends CNFFeedback[T] {
     override def toString = " Expand \n" + old + "\n as \n" + news.mkString("\n")
   }
 
   //Grammar feedback 
-  case class AddAllRules(l: List[Rule]) extends GrammarFeedback {
+  case class AddAllRules[T](l: List[Rule[T]]) extends GrammarFeedback[T] {
     override def toString = " Add rules " + rulesToStr(l)
   }
-  case class RemoveRules(l: List[Rule], repRules : Option[List[Rule]] = None) extends GrammarFeedback {
+  case class RemoveRules[T](l: List[Rule[T]], repRules : Option[List[Rule[T]]] = None) extends GrammarFeedback[T] {
     override def toString = " Remove rules " + rulesToStr(l)
   }
-  case class RefineRules(olds: List[Rule], news: List[Rule], repRules: List[Rule]) extends GrammarFeedback {
+  case class RefineRules[T](olds: List[Rule[T]], news: List[Rule[T]], repRules: List[Rule[T]]) extends GrammarFeedback[T] {
     override def toString = " Refine \n" + rulesToStr(olds) + "\n by replacing it by \n" + rulesToStr(news)
   }
-  case class ExpandRules(olds: List[Rule], news: List[Rule]) extends GrammarFeedback {
+  case class ExpandRules[T](olds: List[Rule[T]], news: List[Rule[T]]) extends GrammarFeedback[T] {
     override def toString = " Expand \n" + rulesToStr(olds) + "\n by replacing it by \n" + rulesToStr(news)
   }
 
-  def cnfToGrammarFeedbacks[T](oldg: Grammar[T], newg: Grammar[T], cnfFBs: List[CNFFeedback]) = cnfFBs map {
+  def cnfToGrammarFeedbacks[T](oldg: Grammar[T], newg: Grammar[T], cnfFBs: List[CNFFeedback[T]]) = cnfFBs map {
     case CNFAdd(rules) =>      
       val newrules = CNFConverter.removeCNFNonterminals(newg, rules)
       AddAllRules(newrules)
@@ -83,7 +83,7 @@ object RepairResult {
 
   //BNF feedback 
   //TODO: do not know how to generate this
-  case class AddAllBNFRules(l: List[BNFRule], s: String) extends BNFFeedback {
+  /*case class AddAllBNFRules(l: List[BNFRule], s: String) extends BNFFeedback {
     override def toString = s + l.mkString("\n")
   }
   case class RemoveBNFRules(l: List[BNFRule], s: String) extends BNFFeedback {
@@ -91,7 +91,7 @@ object RepairResult {
   }
   case class ReplaceBNFRules(old: List[BNFRule], nu: List[BNFRule], s: String) extends BNFFeedback {
     override def toString = s + " replace \n" + old.mkString("\n") + "\n by \n" + nu.mkString("\n")
-  }
+  }*/
 
   /*def toBNFFeedback(feedback: List[CNFFeedback], cnfG: Grammar) = {
 
@@ -103,15 +103,15 @@ object RepairResult {
     //println("Generated Regexp: "+genRegexp.mkString("\n"))
     //println("Generated Symbols: "+genSymbols.mkString("\n"))
 
-    def cnfToGrammarRule(l: Rule): Rule = {
+    def cnfToGrammarRule(l: Rule[T]): Rule[T] = {
       val rightSide = l.rightSide.flatMap {
         case k: Nonterminal => genSymbols.getOrElse(k, List(k))
         case k => List(k)
       }
       val leftSide = l.leftSide
-      cnfContext.getOrElse(leftSide, (l: List[Symbol]) => Rule(leftSide, rightSide))(rightSide)
+      cnfContext.getOrElse(leftSide, (l: List[Symbol]) => Rule[T](leftSide, rightSide))(rightSide)
     }
-    def grammarToBNFrule(l: Rule): BNFRule = {
+    def grammarToBNFrule(l: Rule[T]): BNFRule = {
       val rightSide = RegConcat(l.rightSide.map {
         case k: Symbol => {
           val re = genRegexp.getOrElse[RegExp](k, RegId(k.name): RegExp)

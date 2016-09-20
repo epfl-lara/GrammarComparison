@@ -24,7 +24,7 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
 
   val cnfRef = equivChecker.refg.cnfGrammar 
 
-  def makeParsable(g: Grammar[T], unparsableWord: List[Terminal]) = {
+  def makeParsable(g: Grammar[T], unparsableWord: List[Terminal[T]]) = {
 
     if (g.rules.isEmpty) {
       throw new IllegalStateException("No rules found in the input grammar to repair!!")
@@ -35,22 +35,22 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
         println("Ref parse tree: " + refTree)      
 
       //println("Ref parse tree: "+refTree)
-      var rulesHypothesized = Set[Rule]()
+      var rulesHypothesized = Set[Rule[T]]()
       // Each node stores possibles rules of the solution which could apply
-      var possibleRules = Map[Node, Set[Rule]]()
+      var possibleRules = Map[Node[T], Set[Rule[T]]]()
       val nontermMapping = new Util.MultiMap[Nonterminal, Nonterminal]()
 
       //StartRef matches startG and vice-versa. 
       //We make sure that startG  matches nothing else
       nontermMapping.addBinding(cnfRef.start, g.start)
 
-      def recBottomUpCompare(subtree: ParseTree): Unit = subtree match {
+      def recBottomUpCompare(subtree: ParseTree[T]): Unit = subtree match {
         case pnode @ Node(nr @ Rule(ntLeft, _), children) =>
           //invoke the procedure recursively on each of the children
           children.map(recBottomUpCompare)
           val childSymsList = children.map {
-            case Leaf(t) => Set(t.asInstanceOf[Symbol])
-            case chnode: Node => possibleRules(chnode).map(_.leftSide.asInstanceOf[Symbol])
+            case Leaf(t) => Set(t.asInstanceOf[Symbol[T]])
+            case chnode: Node[T] => possibleRules(chnode).map(_.leftSide.asInstanceOf[Symbol[T]])
           }
           //construct the set of possible rules of 'g' that matches childPossibs
           val initPots = g.rules.filter(_.rightSide.size == childSymsList.size)
@@ -78,7 +78,7 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
           val rulesForNode = if (!possibs.isEmpty) {
             possibs.toSet
           } else {
-            val emptySententialForm = List[Symbol]()
+            val emptySententialForm = List[Symbol[T]]()
             val newRsides = childSymsList.foldLeft(List(emptySententialForm)) {
               case (partialRsides, childSyms) =>
                 //take cartesian product of partialRsides and childLefts
@@ -104,18 +104,18 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
           ;
       }
 
-      var chosenRules = Map[Node,Rule]()
-      def recTopDownGenerate(subtree: ParseTree, nt: Nonterminal) :  Unit = subtree match {
+      var chosenRules = Map[Node[T],Rule[T]]()
+      def recTopDownGenerate(subtree: ParseTree[T], nt: Nonterminal) :  Unit = subtree match {
         case pnode @ Node(_, children) => {
           //pick a possible rule with 'nt' on the leftSide that has the minimum size for the right side          
-          val minRule = possibleRules(pnode).filter(_.leftSide == nt).min(Ordering.by[Rule, Int] {
+          val minRule = possibleRules(pnode).filter(_.leftSide == nt).min(Ordering.by[Rule[T], Int] {
             //preferring rules with just terminals more
-            case Rule(_, rside) if rside.forall(_.isInstanceOf[Terminal]) => 0
+            case Rule(_, rside) if rside.forall(_.isInstanceOf[Terminal[T]]) => 0
             case Rule(_, rightSide) => rightSide.size
           })
           chosenRules += (pnode -> minRule)
           minRule match {
-            case Rule(_, rside) if rside.forall(_.isInstanceOf[Terminal]) =>
+            case Rule(_, rside) if rside.forall(_.isInstanceOf[Terminal[T]]) =>
               ; //need not do any thing
             case Rule(_, rside) =>
               (children zip rside).foreach {

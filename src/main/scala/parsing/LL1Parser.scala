@@ -5,14 +5,14 @@ import scala.annotation.tailrec
 import grammar.GrammarUtils
 import grammar.GlobalContext
 
-class LL1Parser[T](g : Grammar[T]) extends Parser {
-  case class EndOfRule(r: Rule)
+class LL1Parser[T](g : Grammar[T]) extends Parser[T] {
+  case class EndOfRule(r: Rule[T])
 
-  def parse(s: List[Terminal])(implicit opctx: GlobalContext): Boolean = {
+  def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     parseWithTree(s).nonEmpty
   }
   //Returns one possible grammar list
-  def parseWithTree(s: List[Terminal])(implicit opctx: GlobalContext): Option[ParseTree] = {
+  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
     require(GrammarUtils.isLL1(g))
 
     val (nullable, first, follow) = GrammarUtils.nullableFirstFollow(g)
@@ -24,9 +24,9 @@ class LL1Parser[T](g : Grammar[T]) extends Parser {
       t <- GrammarUtils.firstA(rule.rightSide, nullable, first) ++ (if (rule.rightSide.forall(nullable)) follow(nt) else Nil)
     ) yield (nt, t) -> rule
 
-    val parseTable: Map[(Nonterminal, Terminal), Rule] = parseTableBuild.toMap
+    val parseTable: Map[(Nonterminal, Terminal[T]), Rule[T]] = parseTableBuild.toMap
 
-    @tailrec def rec(current: List[Either[Symbol, EndOfRule]], s: List[Terminal], acc: List[ParseTree]): Option[ParseTree] = (current, s) match {
+    @tailrec def rec(current: List[Either[Symbol[T], EndOfRule]], s: List[Terminal[T]], acc: List[ParseTree[T]]): Option[ParseTree[T]] = (current, s) match {
       case (Nil, Nil) => acc.headOption
       case (Right(EndOfRule(rule)) :: q, s) =>
         val n = rule.rightSide.length
@@ -36,7 +36,7 @@ class LL1Parser[T](g : Grammar[T]) extends Parser {
           rec(parsing.rightSide.map(Left.apply) ++ List(Right(EndOfRule(parsing))) ++ q, s, acc)
         case _ => None
       }
-      case (Left(t: Terminal) :: q, a :: b) if t == a =>
+      case (Left(t: Terminal[T]) :: q, a :: b) if t == a =>
         rec(q, b, Leaf(t) :: acc)
     }
     rec(Left(g.start) :: Nil, s, Nil)

@@ -28,7 +28,7 @@ object GrammarReaders {
       throw new IllegalArgumentException(errstr)
   }
   
-  def readDerivation(g: Grammar[String]): List[SententialForm] = {
+  def readDerivation(g: Grammar[String]): List[SententialForm[String]] = {
     println("Enter derivation steps")
     val lines = Iterator.continually(StdIn.readLine).takeWhile(_ != "").toList
     val (dervs, errstr) = (new SententialFormParser()).parseSententialForms(lines, g)

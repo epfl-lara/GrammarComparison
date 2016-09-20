@@ -7,6 +7,7 @@
 package generators
 
 import grammar._
+import CFGrammar._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.{ Set => MutableSet }
 import CFGrammar._
@@ -21,25 +22,22 @@ object GeneratorBottomup {
    * number - number of strings to be generated
    * The 'separator' argument is only used for printing
    */
-  def apply(grammar: Grammar[_], maxWords: Int, debug : Boolean = false): List[List[Terminal]] = {
+  def apply[T](grammar: Grammar[T], maxWords: Int, debug : Boolean = false): List[List[Terminal[T]]] = {
     val g = new GenerationScheme(grammar, maxWords, debug)
     val r = g.run
     r
   }
 
-  class GenerationScheme(grammar: Grammar[_], maxWords: Int, debug : Boolean) {
+  class GenerationScheme[T](grammar: Grammar[T], maxWords: Int, debug : Boolean) {
 
-    type Word = List[Terminal]
-    type Words = List[Word]
+    private var yields = Map[Nonterminal, Words[T]]()
 
-    private var yields = Map[Nonterminal, Words]()
-
-    def rewriteRules(s: Symbol) = grammar.rules.filter(_.leftSide == s)
+    def rewriteRules(s: Symbol[T]) = grammar.rules.filter(_.leftSide == s)
 
     //truncated to maxWords
-    def cartesianProduct(words1: Words, words2: Words) = {
+    def cartesianProduct(words1: Words[T], words2: Words[T]) = {
       var i = 0
-      var product = List[(Word, Word)]()
+      var product = List[(Word[T], Word[T])]()
       for (w1 <- words1; w2 <- words2; if i <= maxWords) {
         i += 1
         product :+= (w1, w2)
@@ -47,19 +45,19 @@ object GeneratorBottomup {
       product
     }
 
-    def ruleApplies(rule: Rule): Boolean = {
+    def ruleApplies(rule: Rule[T]): Boolean = {
       rule.rightSide.forall {
         case nt: Nonterminal => yields.contains(nt) && !yields(nt).isEmpty
         case _ => true
       }
     }
 
-    def applyRule(rule: Rule): Words = {
+    def applyRule(rule: Rule[T]): Words[T] = {
       val Rule(lhs, rhs) = rule
       if (rhs.isEmpty) List(List()) //generate empty word
       else {
         val listOfWords = rhs.map(r => r match {
-          case t: Terminal => List(List(t))
+          case t: Terminal[T] => List(List(t))
           case nt: Nonterminal => yields(nt).toList
         })
         if (listOfWords.isEmpty) {
@@ -80,11 +78,11 @@ object GeneratorBottomup {
     /**
      * Returns the newly generated words for the nonterminal
      */
-    def gen(nt: Nonterminal): Words = {
+    def gen(nt: Nonterminal): Words[T] = {
       val rules = rewriteRules(nt)
       val newwords = rules.filter(ruleApplies).flatMap(applyRule).distinct
 
-      var oldWords = List[Word]()
+      var oldWords = List[Word[T]]()
       if (yields contains nt) {
         oldWords = yields(nt)
         yields -= nt
@@ -113,7 +111,7 @@ object GeneratorBottomup {
 
       /*def calls(left: Nonterminal, right: Nonterminal): Boolean = {        
         grammar.rules.exists {          
-          case Rule(l, r) if l == left && r.contains(right) =>
+          case Rule[T](l, r) if l == left && r.contains(right) =>
             if(debug)
               println(left + "--calls-->"+ right) 
             true
@@ -164,7 +162,7 @@ object GeneratorBottomup {
       topologicalOrder
     }
 
-    def run: Words = {
+    def run: Words[T] = {
 
       val nonterms = nonterminalsInTopologicalOrder(grammar)
       if(debug)

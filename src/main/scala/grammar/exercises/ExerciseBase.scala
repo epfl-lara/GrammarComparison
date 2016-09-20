@@ -59,7 +59,7 @@ object ExerciseType {
     allExercises.find(_.key == key)
   }
 
-  def parseWord(wordStrs: List[String], refGrammar: BNFGrammar[String]): Either[String, Word] = {
+  def parseWord(wordStrs: List[String], refGrammar: BNFGrammar[String]): Either[String, Word[String]] = {
     val (words, errmsg) = (new SententialFormParser()).parseSententialForms(
       wordStrs.toList, refGrammar.cfGrammar)
     if (!errmsg.isEmpty())
@@ -71,7 +71,7 @@ object ExerciseType {
       } else {
         //Here, we still do not know if the word is parsable by the grammar or not.
         //TODO: for this we need to use CYK parser here.
-        Right(words(0).map(_.asInstanceOf[Terminal]))
+        Right(words(0).map(_.asInstanceOf[Terminal[String]]))
       }
     }
   }
@@ -82,7 +82,7 @@ case class GrammarEntry(
   name: String, // Title
   desc: String,
   reference: BNFGrammar[String],
-  word: Option[Word],
+  word: Option[Word[String]],
   initGrammar: Option[BNFGrammar[String]],
   usecases: Array[String],
   referenceFile: Option[String],

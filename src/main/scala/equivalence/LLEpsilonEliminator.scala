@@ -24,7 +24,7 @@ object LLEpslionEliminator {
 
     val (nullables, first, follow) = GrammarUtils.nullableFirstFollow(g)
 
-    def alpha(sform: SententialForm): List[SententialForm] = {
+    def alpha(sform: SententialForm[T]): List[SententialForm[T]] = {
       val (head :: tail) = sform //sform is never empty
       //the first character is always non-nullable
       val firstchunk = head +: tail.takeWhile(nullables.contains _)
@@ -34,8 +34,8 @@ object LLEpslionEliminator {
       })
     }
 
-    var sformNonterms = Map[SententialForm, Nonterminal]() //mapping from sforms to non-terminals
-    def sformToSymbol(sform: SententialForm): Symbol = sform match {
+    var sformNonterms = Map[SententialForm[T], Nonterminal]() //mapping from sforms to non-terminals
+    def sformToSymbol(sform: SententialForm[T]): Symbol[T] = sform match {
       case List() =>
         throw new IllegalStateException("Empty sentential form!!")
       case List(sym) =>
@@ -52,8 +52,8 @@ object LLEpslionEliminator {
         freshnt
     }
 
-    var newRules = List[Rule]()
-    var queue = List[SententialForm](List(g.start)) //initialize to start
+    var newRules = List[Rule[T]]()
+    var queue = List[SententialForm[T]](List(g.start)) //initialize to start
     var seenSforms = Set[Nonterminal](g.start) //using the non-term key of sforms here
 
     while (!queue.isEmpty) {
@@ -70,7 +70,7 @@ object LLEpslionEliminator {
           g.nontermToRules(head).filterNot(_.rightSide.isEmpty).foreach {
             case Rule(_, gamma) =>
               //rule 1
-              val newrhs = alpha(gamma ++ tail).foldLeft(List[Symbol]()) {
+              val newrhs = alpha(gamma ++ tail).foldLeft(List[Symbol[T]]()) {
                 (acc, rightSf) =>
                   val rsym = sformToSymbol(rightSf)
                   rsym match {
@@ -84,7 +84,7 @@ object LLEpslionEliminator {
               }
               newRules :+= Rule(sfnt, newrhs)
           }
-        case (head: Terminal) :: tail if tail.size > 0 =>
+        case (head: Terminal[T]) :: tail if tail.size > 0 =>
           //rule 3
           newRules :+= Rule(sfnt, List(head))
           //rule 2
@@ -94,7 +94,7 @@ object LLEpslionEliminator {
             //select only non-epsilon rules of A
             g.nontermToRules(A).filterNot(_.rightSide.isEmpty).foreach {
               case Rule(_, gamma) =>
-                val newrhs = alpha(gamma ++ gamma2).foldLeft(List[Symbol]()) {
+                val newrhs = alpha(gamma ++ gamma2).foldLeft(List[Symbol[T]]()) {
                   (acc, rightSf) =>
                     val rsym = sformToSymbol(rightSf)
                     rsym match {
@@ -115,7 +115,7 @@ object LLEpslionEliminator {
     }
     //add back the epsilon for the start symbol again
     if (nullables(g.start)) {
-      Grammar[T](g.start, Rule(g.start, List()) +: newRules)
+      Grammar[T](g.start, Rule(g.start, List[Symbol[T]]()) +: newRules)
     } else
       Grammar[T](g.start, newRules)
   }
@@ -156,7 +156,7 @@ object LLEpslionEliminator {
       })
     }
 
-    def makeFstNonnull(rest: List[Symbol]): List[SententialForm] = rest match {
+    def makeFstNonnull(rest: List[Symbol[T]]): List[SententialForm[T]] = rest match {
       case (fnt: Nonterminal) :: tail if nullables(fnt) =>
         (nonNull(fnt) +: tail) +: makeFstNonnull(tail)
       case _ =>

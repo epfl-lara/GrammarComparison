@@ -10,7 +10,7 @@ import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import RepairResult._
 
-class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker: EquivalenceChecker[T])
+class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChecker: EquivalenceChecker[T])
 	(implicit gctx: GlobalContext, opctx: RepairContext) {
 
   sealed abstract class Permissibility
@@ -19,11 +19,11 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
   case class NotPermissible() extends Permissibility
 
   val cnfG = g.cnfGrammar 
-  val gParser = new CYKParser(cnfG)
+  val gParser = new CYKParser[T](cnfG)
   val nontermProductions = g.nontermToRules.map { case (k, v) => (k, v.map(_.rightSide).toSet) }
   val refWords = equivChecker.getRefWords 
 
-  def findNonterminalWithProductions(prods: Set[List[Symbol]]): Option[Nonterminal] = {
+  def findNonterminalWithProductions(prods: Set[List[Symbol[T]]]): Option[Nonterminal] = {
     nontermProductions.collectFirst {
       case (nt, ntRights) if (ntRights == prods) => nt
     }
@@ -31,16 +31,16 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
 
   lazy val (permissibleParseTrees, acceptedWords) = {    
     //get the parse trees of cnfG of all the valid strings of the reference grammar    
-    refWords.foldLeft((List[ParseTree](), List[Word]())) {
+    refWords.foldLeft((List[ParseTree[T]](), List[Word[T]]())) {
       //check for abort flag
       case (acc, _) if gctx.abort => acc
       case ((accTrees, accWords), refWord) if accWords.size < opctx.nCorrectWordsForRepair => {
         gParser.parseWithTree(refWord) match {
           case Some(tree) =>
             //for debugging
-            /*val intTerm = Terminal("Int")          
-          if (refWord == List(intTerm, Terminal(","), intTerm, Terminal("=>"), intTerm, Terminal("$"))) {
-            println("ParseTree for "+refWord+": \n"+tree)
+            /*val intTerm = Terminal[T]("Int")          
+          if (refWord == List(intTerm, Terminal[T](","), intTerm, Terminal[T]("=>"), intTerm, Terminal[T]("$"))) {
+            println("ParseTree[T] for "+refWord+": \n"+tree)
             oneTree = tree
             println(wordToString(refWord))
           }*/            
@@ -53,19 +53,19 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
     }
   }
 
-  var childrenCache = Map[Rule, Set[(Rule, Int)]]()
+  var childrenCache = Map[Rule[T], Set[(Rule[T], Int)]]()
   /**
    * Collects the set of rules of the nodes that are children
    * of nodes containing context.
    */
-  def children(context: Rule): Set[(Rule, Int)] = {
+  def children(context: Rule[T]): Set[(Rule[T], Int)] = {
 
-    def collectChildren(tree: ParseTree): Set[(Rule, Int)] = {
+    def collectChildren(tree: ParseTree[T]): Set[(Rule[T], Int)] = {
       tree match {
         case Node(_, List()) | Leaf(_) => Set()
         case Node(rule, children) =>
           val foundChildren = (children flatMap {
-            case cn: Node => collectChildren(cn)
+            case cn: Node[T] => collectChildren(cn)
             case _ => List()
           }).toSet
           if (rule == context) {
@@ -81,7 +81,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
     }
 
     val children = childrenCache.getOrElse(context, {
-      val chs = permissibleParseTrees.foldLeft(Set[(Rule, Int)]())((acc, ptree) => acc ++ collectChildren(ptree))
+      val chs = permissibleParseTrees.foldLeft(Set[(Rule[T], Int)]())((acc, ptree) => acc ++ collectChildren(ptree))
       childrenCache += (context -> chs)
       chs
     })
@@ -95,12 +95,12 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
    * This relies on the fact that the start symbol does not appear on the left side of productions
    * TODO: This code could be really slow O(n^2) where 'n' is the size of the tree. Find a faster algorithm.
    */
-  def collectParents(tree: ParseTree, key: ParseTree): Set[(Rule, Int)] = {
+  def collectParents(tree: ParseTree[T], key: ParseTree[T]): Set[(Rule[T], Int)] = {
     tree match {
       case Node(_, List()) | Leaf(_) => Set()
       case Node(nr, children) =>
         val foundParents = (children flatMap {
-          case cn: Node => collectParents(cn, key)
+          case cn: Node[T] => collectParents(cn, key)
           case _ => List()
         }).toSet
         foundParents ++ children.zipWithIndex.collect {
@@ -113,7 +113,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
    * TODO: I am sure there is a better way to identify this using just the
    * rules and the ref words
    */
-  def isTreePermissible(subtree: ParseTree, context: Rule, index: Int): Permissibility = {
+  def isTreePermissible(subtree: ParseTree[T], context: Rule[T], index: Int): Permissibility = {
     val res = permissibleParseTrees.foldLeft(NotPermissible(): Permissibility)((acc, ptree) => acc match {
       case PermissibleUnderContext() => {
         acc
@@ -135,18 +135,18 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
 
   sealed abstract class RepairType
   object Aborted extends RepairType
-  case class RemoveRule(rule: Rule) extends RepairType
-  case class ExpandRightSides(rule: Rule) extends RepairType  
-  case class PreventUnderContext(rule: Rule, index: Int, context: Rule) extends RepairType
+  case class RemoveRule(rule: Rule[T]) extends RepairType
+  case class ExpandRightSides(rule: Rule[T]) extends RepairType  
+  case class PreventUnderContext(rule: Rule[T], index: Int, context: Rule[T]) extends RepairType
 
   /**
    * This procedure identifies the rules and the repairs that have to be performed
    */
-  @tailrec final def findRepairPoint(tree: ParseTree): RepairType = tree match {
+  @tailrec final def findRepairPoint(tree: ParseTree[T]): RepairType = tree match {
     case _ if gctx.abort =>
       Aborted
     case n @ Node(contextRule, children) =>
-      val repairPoint = children.zipWithIndex.foldLeft(None: Option[(Permissibility, ParseTree, Int)]) {
+      val repairPoint = children.zipWithIndex.foldLeft(None: Option[(Permissibility, ParseTree[T], Int)]) {
         case (None, (childTree, index)) =>
           isTreePermissible(childTree, contextRule, index) match {
             case PermissibleUnderContext() =>
@@ -167,20 +167,20 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
           //combination of the productions of the nonterminals on the right hand side are made explicit. 
           //Hence, in the subsequent iterations the current invalid combinations can be eliminated by splitting
           ExpandRightSides(contextRule)
-        case Some((_, childTree: Leaf, _)) =>
+        case Some((_, childTree: Leaf[T], _)) =>
           //here the terminal is not feasible under the given context.
           //Therefore, the only fix is to remove the context rule
           RemoveRule(contextRule)
         case Some((PermissibleInOtherContexts(), Node(r, _), index)) =>
           //the fix lies in this child
           PreventUnderContext(r, index, contextRule)
-        case Some((NotPermissible(), child: Node, _)) =>
+        case Some((NotPermissible(), child: Node[T], _)) =>
           //recurse into the child tree as we have found a smaller infeasible subtree
           findRepairPoint(child)
         case Some(_) =>
           throw new IllegalStateException("Impossible match case taken !!")
       }
-    case l: Leaf =>
+    case l: Leaf[T] =>
       //we should be hitting this case 
       throw new IllegalStateException("The parse tree starts with a leaf: " + l)
   }
@@ -189,7 +189,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
    * Returns the actual fix performed and the result of the repair as
    * a mapping from the old rules to the new rules that replaces it.
    */  
-  def eliminateAParseTree(): GrammarFeedback = {
+  def eliminateAParseTree(): GrammarFeedback[T] = {
 
     val gtree = gParser.parseWithTree(ungenWord).get
     if (opctx.debugSupersetRepair)
@@ -198,7 +198,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
     //when there is no permissible parse trees the grammar doesn't accept any valid string
     //hence, remove the first production      
     if (permissibleParseTrees.isEmpty && !gctx.abort) {
-      RemoveRules(List(gtree.asInstanceOf[Node].r))
+      RemoveRules(List(gtree.asInstanceOf[Node[T]].r))
     } else if (gctx.abort) {
       NoRepair("Operation Aborted.")
     } else {
@@ -249,7 +249,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
     }
   }    
 
-  def isRedundantRule(rule: Rule) = {
+  def isRedundantRule(rule: Rule[T]) = {
     val newCnf = Grammar[T](g.start, g.rules.filterNot(_ == rule)).cnfGrammar    
     if (!newCnf.rules.isEmpty) {
       val cykparser = new CYKParser(newCnf)
@@ -267,7 +267,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
    * As an optimization check what are the rules of the left side of 'repairRule'
    * that are actually used by the context and add only those to the new nonterminal
    */
-  def findReplacement(refineRule: Rule, index: Int, context: Rule): (Nonterminal, Seq[Rule]) = {
+  def findReplacement(refineRule: Rule[T], index: Int, context: Rule[T]): (Nonterminal, Seq[Rule[T]]) = {
     //val splitProds = nontermProductions(repairRule.leftSide) -- Set(repairRule.rightSide)
     val usedProds = children(context).collect {
       case (r, `index`) if r.leftSide == refineRule.leftSide => r
@@ -293,7 +293,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
             if (rules.size == splitProds.size) {
               if (splitProds.exists { sp =>
                 val foundMatch = rules.exists(rl => (sp zip rl.rightSide).forall {
-                  case (t1: Terminal, t2: Terminal) if (t1 == t2) => true
+                  case (t1: Terminal[T], t2: Terminal[T]) if (t1 == t2) => true
                   case (nt1: Nonterminal, nt2: Nonterminal) => true
                   case _ => false
                 })
@@ -351,9 +351,9 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
   /**
    * Splits a nonterminal into several nonterminals
    */
-  def splitNonterminal(oldSym: Nonterminal, newSyms: Set[Nonterminal], rules: Set[Rule]): Set[Rule] = {
+  def splitNonterminal(oldSym: Nonterminal, newSyms: Set[Nonterminal], rules: Set[Rule[T]]): Set[Rule[T]] = {
     //first blow up all rights that contains 'oldSym'
-    val newrules = Util.fixpoint((rls: Set[Rule]) => rls.flatMap[Rule, Set[Rule]] {
+    val newrules = Util.fixpoint((rls: Set[Rule[T]]) => rls.flatMap[Rule[T], Set[Rule[T]]] {
       case Rule(lside, rside) if rside.contains(oldSym) =>
         val firstIndex = rside.indexOf(oldSym)
         val prefix = rside.take(firstIndex) //this excludes 'oldSym'
@@ -363,7 +363,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word, equivChecker
     })(rules)
 
     //Now, blow up all lefts containing 'oldSym'
-    newrules.flatMap[Rule, Set[Rule]] {
+    newrules.flatMap[Rule[T], Set[Rule[T]]] {
       case Rule(lside, rside) if lside == oldSym =>
         newSyms.map(sym => Rule(sym, rside))
       case other @ _ => Set(other)

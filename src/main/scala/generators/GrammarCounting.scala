@@ -11,8 +11,8 @@ object RandomAccessGeneratorUtil {
    * TODO: this can be more efficiently implemented using a
    * backward shortest path
    */
-  def basecaseOfNonterminals(g: Grammar[_]): Map[Nonterminal, Rule] = {
-    var basecase = Map[Nonterminal, Rule]()
+  def basecaseOfNonterminals[T](g: Grammar[T]): Map[Nonterminal, Rule[T]] = {
+    var basecase = Map[Nonterminal, Rule[T]]()
     var continue = true
     while (continue) {
       continue = false
@@ -21,7 +21,7 @@ object RandomAccessGeneratorUtil {
       g.nontermToRules.foreach {
         case (nt, rules) if (!basecase.contains(nt)) =>
           val baseRule = rules.find(_.rightSide.forall {
-            case t: Terminal => true
+            case t: Terminal[T] => true
             case nt: Nonterminal =>
               basecase.contains(nt)
           })
@@ -40,17 +40,17 @@ object RandomAccessGeneratorUtil {
    * Requires the grammar to not
    * have unproductive symbols
    */
-  def minWords(g: Grammar[_]) = {
-    var minwordMap = Map[Symbol, Word]()
-    var visited = Set[Symbol]() // this will only have non-terminals
+  def minWords[T](g: Grammar[T]) = {
+    var minwordMap = Map[Symbol[T], Word[T]]()
+    var visited = Set[Symbol[T]]() // this will only have non-terminals
 
-    def dfsRec(nt: Nonterminal): Word = {      
+    def dfsRec(nt: Nonterminal): Word[T] = {      
       //ignore everything that is visited but does not have a minwordMap
       val rhsMinwords = g.nontermToRules(nt).collect {
         case Rule(_, rhs) if rhs.forall(s => !visited(s) ||
           minwordMap.contains(s)) =>            
           rhs.flatMap {
-            case t: Terminal =>
+            case t: Terminal[T] =>
               List(t)
             case nt: Nonterminal if visited(nt) =>
               minwordMap(nt)
@@ -80,7 +80,7 @@ object RandomAccessGeneratorUtil {
   
   val one = BigInt(1)
   val zero = BigInt(0)
-  def wordCountOfNonterminals(g: Grammar[_]): Map[Nonterminal, BigInt] = {
+  def wordCountOfNonterminals[T](g: Grammar[T]): Map[Nonterminal, BigInt] = {
     var wordCount = Map[Nonterminal, BigInt]()
     var continue = true
     while (continue) {
@@ -91,13 +91,13 @@ object RandomAccessGeneratorUtil {
       g.nontermToRules.foreach {
         case (nt, rules) if (!wordCount.contains(nt)) =>
           if (rules.forall(_.rightSide.forall {
-            case t: Terminal => true
+            case t: Terminal[T] => true
             case rnt: Nonterminal =>
               wordCount.contains(rnt)
           })) {
 
             wordCount += (nt -> rules.map(_.rightSide.map {
-              case t: Terminal => one
+              case t: Terminal[T] => one
               case nt: Nonterminal => wordCount(nt)
             }.product).sum)
             continue = true
@@ -114,7 +114,7 @@ object RandomAccessGeneratorUtil {
    * Note that this number is always bounded if epsilons are also considered as terminals.
    * Note: in this class 'Int' data types are for word sizes and 'BigInt' for number of words.
    */
-  class WordCounter(g: Grammar[_], size: Int) {
+  class WordCounter[T](g: Grammar[T], size: Int) {
     val nontermToIndex = g.nontermsInPostOrder.zipWithIndex.toMap
     val indexToNonterms = nontermToIndex.map { case (nt, i) => (i, nt) }.toMap
 
@@ -129,8 +129,8 @@ object RandomAccessGeneratorUtil {
 
     //only for sizes > cacheBeginSize we start caching
     //val cacheBeginSize = 1
-    var splitsCache = Map[(Rule, Int), List[(Int, BigInt)]]()
-    def possibleSplitsForRule(rl: Rule, m: Int): List[(Int, BigInt)] = {
+    var splitsCache = Map[(Rule[T], Int), List[(Int, BigInt)]]()
+    def possibleSplitsForRule(rl: Rule[T], m: Int): List[(Int, BigInt)] = {
       //println("Rule: "+rl)
       //assume that the right-side has at most two non-terminals
       //TODO: extend this later to multiple ones.      
@@ -185,7 +185,7 @@ object RandomAccessGeneratorUtil {
       }
     }
 
-    def ruleCountForSize(rl: Rule, m: Int): BigInt = {
+    def ruleCountForSize(rl: Rule[T], m: Int): BigInt = {
       val cnt = possibleSplitsForRule(rl, m).map(_._2).sum
       //      val list =  List(Nonterminal("expression1"), Nonterminal("expressionErr2"), 
       //          Nonterminal("N-3067"),Nonterminal("N-3068"),Nonterminal("N-1227"),Nonterminal("N-1228"))      
@@ -240,7 +240,7 @@ object RandomAccessGeneratorUtil {
      * expanded version of the grammar. However, the cache could be cleaned up
      * or can store only the recently used ones.
      */
-    var ntrulesCache = Map[(Nonterminal, Int), List[(Rule, BigInt)]]()
+    var ntrulesCache = Map[(Nonterminal, Int), List[(Rule[T], BigInt)]]()
     def rulesForNonterminal(nt: Nonterminal, m: Int) = {
 
       if (ntrulesCache.contains((nt, m)))
@@ -257,7 +257,7 @@ object RandomAccessGeneratorUtil {
     }
   }  
 
-  def firstMismatchSize(g1: Grammar[_], g2: Grammar[_], maxSize: Int): Option[Int] = {
+  def firstMismatchSize[T](g1: Grammar[T], g2: Grammar[T], maxSize: Int): Option[Int] = {
     val wc1 = new WordCounter(g1, maxSize)
     val wc2 = new WordCounter(g2, maxSize)
     var foundSize: Option[Int] = None

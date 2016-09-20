@@ -14,29 +14,29 @@ import CFGrammar._
  * Generator for this grammar.
  */
 object GeneratorTopdown {
-  def apply(grammar: Grammar[_], depth: Int, separator: String = ""): List[List[Terminal]] = {
-    val g = new GenerationScheme(grammar: Grammar[_])
+  def apply[T](grammar: Grammar[T], depth: Int, separator: String = ""): List[List[Terminal[T]]] = {
+    val g = new GenerationScheme(grammar: Grammar[T])
     val r = g.run(depth)
     r
   }
 
-  class GenerationScheme[T](grammar: Grammar[_]) {
-    private val generated = ArrayBuffer[List[List[Symbol]]]()
+  class GenerationScheme[T](grammar: Grammar[T]) {
+    private val generated = ArrayBuffer[List[List[Symbol[T]]]]()
 
-    def isTerminal(s: Symbol) =
+    def isTerminal(s: Symbol[T]) =
       s match {
-        case s: Terminal => true
+        case s: Terminal[T] => true
         case _ => false
       }
 
     def startSymbol = grammar.start
 
-    def rewriteRules(s: Symbol) = grammar.rules.filter(_.leftSide == s)
+    def rewriteRules(s: Symbol[T]) = grammar.rules.filter(_.leftSide == s)
 
-    def run(depth: Int): List[List[Terminal]] = {
+    def run(depth: Int): List[List[Terminal[T]]] = {
 
       for (i <- generated.size until depth) { // We incrementally augment the set
-        val newSet: List[List[Symbol]] = if (i == 0) List(List(startSymbol))
+        val newSet: List[List[Symbol[T]]] = if (i == 0) List(List(startSymbol))
         else
           for (
             prev <- generated(i - 1); // For each previously generated sequence of symbols.         
@@ -47,7 +47,7 @@ object GeneratorTopdown {
           ) yield prev.take(j) ++ rule.rightSide ++ prev.drop(j + 1)
         generated += newSet.distinct
       }
-      generated.view.take(depth).flatMap(_.filter(_.forall(isTerminal(_))).asInstanceOf[List[List[Terminal]]]).toList
+      generated.view.take(depth).flatMap(_.filter(_.forall(isTerminal(_))).asInstanceOf[List[List[Terminal[T]]]]).toList
     }
   }
 

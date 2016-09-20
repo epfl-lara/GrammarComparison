@@ -161,13 +161,21 @@ object Main {
       
       case "-testDSL" =>
         import GrammarDSL._
-        val defaultGrammar = BNFGrammar[String]('S, List {
-          'S -> (("a" ~ 'S ~ "b") | "")
-        })
+        import EBNFGrammar._        
+        val defaultGrammar = BNFGrammar('S, List(
+          'S -> ("a" ~ 'P ~ "b" | ""),
+          'P  -> "r" ~ 'S
+        ))
         println("DefaultGrammar: "+defaultGrammar)
         println("CFGrammar: "+defaultGrammar.cfGrammar)
         println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar.cfGrammar))
-
+        
+      case "-testTool" => 
+        val toolGrammar = ToolGrammarDSL.ebnfGrammar
+        println("DefaultGrammar: "+toolGrammar)
+        println("CFGrammar: "+toolGrammar.cfGrammar)
+        println("isLL1: "+GrammarUtils.isLL1WithFeedback(toolGrammar.cfGrammar))
+        
       case _ =>
         println("Unknown option: " + option)              
     }
