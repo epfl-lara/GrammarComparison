@@ -161,7 +161,11 @@ class AntlrParser(g: Grammar[String])(implicit opctx: ParseContext) extends Pars
     (parser.getNumberOfSyntaxErrors == 0)
   }
 
-  def parseWithTree(s: List[Terminal[String]])(implicit gctx: GlobalContext): Option[ParseTree[String]] = {
+  def parseWithTree(s: List[Terminal[String]])(implicit gctx: GlobalContext) = {
+    throw new IllegalStateException("Not implemented yet!")
+  }
+  
+  def parseWithTrees(s: List[Terminal[String]])(implicit gctx: GlobalContext) = {
     throw new IllegalStateException("Not implemented yet!")
   }
 

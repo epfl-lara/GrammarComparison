@@ -41,4 +41,9 @@ class LL1Parser[T](g : Grammar[T]) extends Parser[T] {
     }
     rec(Left(g.start) :: Nil, s, Nil)
   }
+  
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = parseWithTree(s) match {
+    case Some(t) => Stream(t)
+    case _ => Stream.empty
+  }
 }

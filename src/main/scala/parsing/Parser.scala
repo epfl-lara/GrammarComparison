@@ -12,7 +12,15 @@ import scala.collection.immutable.Range
 
 trait Parser[T] {
   def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean
+  /**
+   * Returns one parse tree of the string `s` if it is parsable.
+   * The parse tree is chosen arbitrarily if the grammar is ambiguous
+   */
   def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]]
+  /**
+   * Returns all parse trees of the string `s` as a stream.
+   */
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]]
 }
 
 /**
@@ -63,5 +71,11 @@ object ParseTreeUtils {
     val terms = s.map(Terminal[T] _)
     val parser = getParser(g)      
     parser.parseWithTree(terms)   
+  }
+  
+  def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
+    val terms = s.map(Terminal[T] _)
+    val parser = getParser(g)      
+    parser.parseWithTrees(terms)   
   } 
 }

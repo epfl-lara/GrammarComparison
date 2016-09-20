@@ -28,9 +28,9 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
   def parse(w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     opctx.stats.updateCounter(1, "CYKParseCalls")
     val timer = new Stats.Timer()
-    
+
     val res = parseWithNonterminal(G.start, w)
-    
+
     opctx.stats.updateCounterTime(timer.timeWithoutGC(), "CYKParseTime", "CYKParseCalls")
     res
   }
@@ -39,7 +39,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
 
     opctx.stats.updateCounter(1, "CYKParseSenformCalls")
     val timer = new Stats.Timer()
-    
+
     def recParse(sfi: Int, sfj: Int, wi: Int, wj: Int): Boolean = {
       if (sfi == sfj) {
         //compute the word between indices wi and wj (inclusive)
@@ -58,7 +58,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         //first half of sentential form should parse 
         //one part of the string and the second part 
         //should parse the other
-        val res = (wi to wj - 1).exists { i =>          
+        val res = (wi to wj - 1).exists { i =>
           recParse(sfi, mid, wi, i) &&
             recParse(mid + 1, sfj, i + 1, wj)
         }
@@ -66,7 +66,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
       }
     }
     val res = recParse(0, sf.size - 1, 0, w.size - 1)
-    
+
     opctx.stats.updateCounterTime(timer.timeWithoutGC(), "CYKParseSenformTime", "CYKParseSenformCalls")
     res
   }
@@ -81,7 +81,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
    * This is more efficient for parsing in batch mode
    */
   def parseWithNonterminal(nt: Nonterminal, w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
-    
+
     val N = w.size
     if (N == 0)
       getRules.exists(rule => rule.leftSide == nt && rule.rightSide.isEmpty)
@@ -142,7 +142,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
           }
         }
       }
-      val res = d(0)(N - 1) contains nt      
+      val res = d(0)(N - 1) contains nt
       res
     }
   }
@@ -267,19 +267,16 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     d
   }
 
-  private def parseWithCYKTree(w: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
-
+  def parseWithCYKTrees(nt: Nonterminal, w: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
     val N = w.size
-    val S = G.start
     if (N == 0)
-      G.nontermToRules(S).find(_.rightSide.isEmpty) match {
-        case Some(rule) => Some(Node(rule, Nil))
-        case None => None
+      G.nontermToRules(nt).find(_.rightSide.isEmpty) match {
+        case Some(rule) => Stream(Node(rule, Nil))
+        case None       => Stream.empty
       }
     else {
       val d = computeParseTreeInfo(w)
-
-      def getCYKParseTree(i: Int, j: Int, nt: Nonterminal): Option[ParseTree[T]] = {
+      def getCYKParseTree(i: Int, j: Int, nt: Nonterminal): Stream[ParseTree[T]] = {
         val treeInfo =
           if (d(i)(j) != null)
             d(i)(j).get(nt)
@@ -294,21 +291,34 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
           }
         treeInfo match {
           case Some(choices) if choices.size > 0 =>
-            //pick an arbitrary rule
-            choices.head match {
-              case (r @ Rule(_, List(t: Terminal[T])), partSize) => Some(Node(r, List(Leaf(t))))
+            choices.toStream.flatMap {
+              case (r @ Rule(_, List(t: Terminal[T])), _) => Stream(Node(r, List(Leaf(t))))
+              case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) =>
+                val leftStream = getCYKParseTree(i, i + partSize - 1, nt1)
+                val rightStream = getCYKParseTree(i + partSize, j, nt2)
+                // construct a cartesian product stream of left and right
+                leftStream.flatMap { left =>
+                  rightStream.map { right =>
+                    Node(r, List(left, right))
+                  }
+                }
+            }
+          /*choices.head match {
+              case (r @ Rule(_, List(t: Terminal[T])), _) => Some(Node(r, List(Leaf(t))))
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) =>
                 (getCYKParseTree(i, i + partSize - 1, nt1), getCYKParseTree(i + partSize, j, nt2)) match {
                   case (Some(left), Some(right)) => Some(Node(r, List(left, right)))
                   case _ => None
                 }
-            }
-          case _ => None
+            }*/
+          case _ => Stream.empty
         }
       }
-      getCYKParseTree(0, N - 1, S)
+      getCYKParseTree(0, N - 1, nt)
     }
   }
+
+  def parseWithCYKTrees(w: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = parseWithCYKTrees(G.start, w)      
 
   def hasMultipleTrees(w: List[Terminal[T]])(implicit opctx: GlobalContext): Option[(Nonterminal, List[Terminal[T]], Set[(Rule[T], Int)])] = {
 
@@ -358,10 +368,10 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     }
   }
 
-  //convert the CNF parse tree to a non-CNF parse tree. That is temporary symbols are removed
-  //from the parse tree
-  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
-
+  /**
+   * Removes the non-terminals introduced due to CNF Conversion
+   */
+  def cykToGrammarTree(initTree: ParseTree[T])(implicit opctx: GlobalContext): ParseTree[T] = {
     def recoverParseTree(cnfTree: ParseTree[T]): List[ParseTree[T]] = cnfTree match {
       case l: Leaf[T] => List(l)
       case Node(r @ Rule(nt, _), children) if CNFConverter.isCNFNonterminal(nt) =>
@@ -372,20 +382,26 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         //update the rule 'r'
         val newRule = Rule(r.leftSide, newChildren.map {
           case Node(Rule(l, _), _) => l
-          case Leaf(t) => t
+          case Leaf(t)             => t
         })
         List(Node(newRule, newChildren))
     }
-
-    parseWithCYKTree(s) match {
-      case None => None
-      case Some(cnfTree) =>
-        recoverParseTree(cnfTree) match {
-          case List(parseTree) => Some(parseTree)
-          case _ =>
-            throw new IllegalStateException("Root contains a list of parse trees")
-        }
+    recoverParseTree(initTree) match {
+      case List(parseTree) => parseTree
+      case _ =>
+        throw new IllegalStateException("Root contains a list of parse trees")
     }
+  }
+
+  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
+    parseWithCYKTrees(s) match {
+      case cnftree #:: tail => Some(cykToGrammarTree(cnftree))
+      case _                => None
+    }
+  }
+
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
+    parseWithCYKTrees(s).map { t => cykToGrammarTree(t) }
   }
 }
 
