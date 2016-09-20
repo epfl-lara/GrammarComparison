@@ -10,46 +10,6 @@ import java.io._
 import grammar.utils._
 import scala.collection.immutable.Range
 
-trait Parser[T] {
-  def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean
-  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]]
-
-}
-
-/**
- * Parse trees associated to rules in CNF
- */
-trait ParseTree[T]
-case class Node[T](r: Rule[T], children: List[ParseTree[T]]) extends ParseTree[T]
-case class Leaf[T](t: Terminal[T]) extends ParseTree[T]
-
-object ParseTreeUtils {
-
-  def parseTreetoString[T](p: ParseTree[T]): String = {
-    val spaceUnit = 4
-    var str = ""
-    def recStr(ptree: ParseTree[T], indentLevel: Int) {
-      val indent = " " * (indentLevel * spaceUnit)
-      str += "\n" + indent
-      ptree match {
-        case Node(r, children) =>
-          str += r.leftSide
-          children.foreach(recStr(_, indentLevel + 1))
-        case Leaf(t) =>
-          str += t
-      }
-    }
-    recStr(p, 0)
-    str
-  }
-
-  def dumpParseTreeToFile[T](p: ParseTree[T], filename: String) = {
-    val pw = new PrintWriter(new FileOutputStream(new File(filename)))
-    pw.print(parseTreetoString(p))
-    pw.close()
-  }
-}
-
 class CYKParser[T](G: Grammar[T]) extends Parser[T] {
   require(isInCNF(G, false))
 

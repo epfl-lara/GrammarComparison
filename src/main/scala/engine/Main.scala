@@ -22,6 +22,8 @@ import scala.concurrent.duration._
 import scala.concurrent.util._
 import java.util.concurrent._
 import GrammarReaders._
+import GrammarDSL._
+import EBNFGrammar._        
 
 object Main {
 
@@ -159,9 +161,7 @@ object Main {
         println("GNFG: " + gnfg)
         println("GNFGrammarLL2 ? " + GNFUtilities.isGNFGrammarLL2(gnfg))
       
-      case "-testDSL" =>
-        import GrammarDSL._
-        import EBNFGrammar._        
+      case "-testDSL" =>        
         val defaultGrammar = BNFGrammar('S, List(
           'S -> ("a" ~ 'P ~ "b" | ""),
           'P  -> "r" ~ 'S
@@ -175,6 +175,25 @@ object Main {
         println("DefaultGrammar: "+toolGrammar)
         println("CFGrammar: "+toolGrammar.cfGrammar)
         println("isLL1: "+GrammarUtils.isLL1WithFeedback(toolGrammar.cfGrammar))
+        /*implicit val acts = new AmbiguityContext()
+        println("isAmbiguous: "+(new AmbiguityChecker(toolGrammar.cfGrammar)).checkAmbiguityInStudentGrammar())*/
+        val toolProg = """object IDENTIFIER {
+          println ( new IDENTIFIER ( ) . IDENTIFIER ( INTEGER_LITERAL ) ) ;                    
+        }
+        class IDENTIFIER {
+          def IDENTIFIER ( IDENTIFIER : Int ) : Int = {
+            var IDENTIFIER : Int ;
+            if ( IDENTIFIER < INTEGER_LITERAL )
+                    IDENTIFIER = INTEGER_LITERAL ;
+                  else
+                    IDENTIFIER = IDENTIFIER * ( this . IDENTIFIER ( IDENTIFIER - INTEGER_LITERAL ) ) ;                
+            return IDENTIFIER ; 
+          }            
+        }
+        """        
+        val tokens =  toolProg.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
+        println("List of tokens: "+tokens.mkString("\n"))
+        println("The grammar can parse the string: "+ParseTreeUtils.parse(toolGrammar.cfGrammar, tokens))
         
       case _ =>
         println("Unknown option: " + option)              

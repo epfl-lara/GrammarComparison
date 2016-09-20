@@ -12,7 +12,8 @@ object ToolGrammarDSL extends Benchmark {
   def benchmarkSource = "lara-compliers-page"     
   def ebnfGrammar = BNFGrammar('Goal, List(
     'Goal -> 'MainObject ~ ('ClassDeclaration*), 
-    'MainObject ->  "object" ~ 'Identifier ~ "{" ~ "def" ~ "main" ~ "(" ~ ")" ~ ":" ~ "Unit" ~ "=" ~ "{" ~ ('Statement*) ~ "}" ~ "}",
+    //'MainObject ->  "object" ~ 'Identifier ~ "{" ~ "def" ~ "main" ~ "(" ~ ")" ~ ":" ~ "Unit" ~ "=" ~ "{" ~ ('Statement*) ~ "}" ~ "}",
+    'MainObject ->  "object" ~ 'Identifier ~ "{" ~ ('Statement*) ~ "}",
     'ClassDeclaration	->	"class" ~ 'Identifier ~ (("extends" ~ 'Identifier)?) ~ "{" ~ ( 'VarDeclaration* ) ~ ( 'MethodDeclaration* ) ~ "}",    
     'VarDeclaration	-> "var" ~ 'Identifier ~ ":" ~ 'Type ~ ";",
     'MethodDeclaration-> "def" ~ 'Identifier ~ "(" ~ (('Identifier ~ ":" ~ 'Type ~ (("," ~ 'Identifier ~ ":" ~ 'Type)*))?) ~ ")" ~ ":" ~ 'Type ~ "=" ~ "{" ~
