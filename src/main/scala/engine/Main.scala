@@ -161,18 +161,17 @@ object Main {
         println("GNFGrammarLL2 ? " + GNFUtilities.isGNFGrammarLL2(gnfg))
       
       case "-testDSL" =>        
-        val defaultGrammar = Grammar('S, Seq(
-          'S ::= "a" ~ 'P ~ "b" | epsilon[String](),
-          List('P ::= "r" ~ 'S)
+        val defaultGrammar = Grammar('S, List[Rules[String]](
+          'S ::= "a" ~ 'P ~ "b" | epsilon(),
+          'P ::= "r" ~ 'S
         ))
         println("DefaultGrammar: "+defaultGrammar)        
         println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar))
         
       case "-testTool" => 
-        val toolGrammar = ToolGrammarDSL.ebnfGrammar
-        println("DefaultGrammar: "+toolGrammar)
-        println("CFGrammar: "+toolGrammar.cfGrammar)
-        println("isLL1: "+GrammarUtils.isLL1WithFeedback(toolGrammar.cfGrammar))
+        val toolGrammar = ToolGrammarDSL.grammar
+        println("DefaultGrammar: "+toolGrammar)        
+        println("isLL1: "+GrammarUtils.isLL1WithFeedback(toolGrammar))
         /*implicit val acts = new AmbiguityContext()
         println("isAmbiguous: "+(new AmbiguityChecker(toolGrammar.cfGrammar)).checkAmbiguityInStudentGrammar())*/
         import ParseTreeUtils._
@@ -198,7 +197,7 @@ object Main {
         /*println("The grammar can parse the string: "+parse(toolGrammar.cfGrammar, tokens))
         println("Parse trees for the string: \n")        
         val ptrees = parseWithTrees(toolGrammar.cfGrammar, tokens)*/
-        val cykParser = new CYKParser(toolGrammar.cfGrammar.cnfGrammar) 
+        val cykParser = new CYKParser(toolGrammar.cnfGrammar) 
         val ptrees = cykParser.parseWithCYKTrees(Nonterminal(scala.Symbol("Goal")), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
         ptrees.take(10).zipWithIndex.foreach { case (t, i) =>
           println(s"Parse Tree $i: "+parseTreetoString(t))                                                  

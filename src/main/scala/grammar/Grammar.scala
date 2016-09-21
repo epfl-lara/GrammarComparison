@@ -17,22 +17,23 @@ object CFGrammar {
   
   trait Symbol[+T] {// symbol is covariant in T
      // DSL operations
-    def ~[U >: T](sym: Nonterminal) = Symbols(this :: List[Symbol[U]](sym))
-    def ~[U >: T](sym: Symbol[U]): Symbols[U] = Symbols(this :: List(sym))    
+    def ~[W >: T, U <: W](sym: Symbol[U]): Symbols[W] = Symbols(this :: List[Symbol[W]](sym))
+    def |[W >: T, U <: W](syms: Symbols[U]) = Alternatives(Symbols(List(this)) :: List[Symbols[W]](syms))
+    def |[W >: T, U <: W](sym: Symbol[U]) = Alternatives(List[Symbols[W]](Symbols(List(this)), Symbols(List(sym))))
   }
   
   /**
    * The following operations are only used by the DSL
    */
-  case class Symbols[T](syms: List[Symbol[T]]) {
-    def ~(sym: Symbol[T]) = Symbols(syms :+ sym)
-    def |(alt: Symbol[T]) = Alternatives(this :: List(Symbols(List(alt))))
-    def |(syms: Symbols[T]) = Alternatives(this :: List(syms))
+  case class Symbols[+T](syms: List[Symbol[T]]) {   
+    def ~[W >: T, U <: W](sym: Symbol[U]) = Symbols((syms: List[Symbol[W]]) :+ sym)
+    def |[W >: T, U <: W](alt: Symbol[U]) = Alternatives(this :: List(Symbols(List[Symbol[W]](alt))))
+    def |[W >: T, U <: W](syms: Symbols[U]) = Alternatives(this :: List[Symbols[W]](syms))
   }
   
-  case class Alternatives[T](rhsList: List[Symbols[T]]) {
-    def |(alt: Symbol[T]) = Alternatives(rhsList :+ Symbols(List(alt)))
-    def |(syms: Symbols[T]) = Alternatives(rhsList :+ syms)
+  case class Alternatives[+T](rhsList: List[Symbols[T]]) {
+    def |[W >: T, U <: W](alt: Symbol[U]) = Alternatives(rhsList :+ Symbols(List[Symbol[W]](alt)))
+    def |[W >: T, U <: W](syms: Symbols[U]) = Alternatives((rhsList : List[Symbols[W]]) :+ syms)
   }
 
   /**
@@ -68,7 +69,7 @@ object CFGrammar {
     // DSL operations
     def ::=[T](rhses: Alternatives[T]) = rhses.rhsList.map(rhs => Rule(this, rhs.syms))
     def ::=[T](rhs: Symbols[T]) = Rule(this, rhs.syms)
-    def ::=[T](rhs: Symbol[T]) = Rule(this, List(rhs))
+    def ::=[T](rhs: Symbol[T]) = Rule(this, List(rhs))    
   }
  
   /**
@@ -121,7 +122,7 @@ object CFGrammar {
     override def toString = name        
   }
 
-  case class Rule[T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
+  case class Rule[+T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
 
     lazy val hash = leftSide.hashCode * 41 + rightSide.hashCode
     override def hashCode: Int = hash
@@ -157,15 +158,16 @@ object CFGrammar {
     }    
   }
     
-  case class Rules[T](l: List[Rule[T]])
-  implicit def listToRules[T](l: List[Rule[T]]) = Rules[T](l) 
+  case class Rules[+T](l: List[Rule[T]])
+  implicit def ruleToRules[T](rl: Rule[T]) = Rules(List(rl))
+  implicit def listToRules[T](l: List[Rule[T]]) = Rules(l) 
   
   object Grammar {
     /**
      * Only used by the DSL
      */
-    def apply[T](st: Nonterminal, rules: Seq[List[Rule[T]]]): Grammar[T] = {
-      Grammar(st, rules.toList.flatten)
+    def apply[T](st: Nonterminal, rules: List[Rules[T]]): Grammar[T] = {
+      Grammar(st, Rules(rules.flatMap(_.l)))
     }
   }  
   

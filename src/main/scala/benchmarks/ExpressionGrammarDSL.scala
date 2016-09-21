@@ -10,7 +10,7 @@ object ExprGrammarDSL {
   
   def benchmarkName = "ToolGrammar using DSL"
   def benchmarkSource = "lara-compliers-page"     
-  def grammar = Grammar('E, Seq(       
+  def grammar = Grammar('E, List[Rules[String]](       
     'E ::= 'E ~ "+" ~ 'E | 'E ~ "*" ~ 'E |  "IDENTIFIER" | "(" ~ 'E ~ ")"  
   ))
 }
