@@ -2,6 +2,7 @@ package grammar
 
 import utils._
 import scala.collection.mutable.{ Map => MutableMap }
+import scala.language.implicitConversions
 
 object CFGrammar {
 
@@ -14,7 +15,25 @@ object CFGrammar {
     }
   }
   
-  trait Symbol[+T] // symbol is covariant in T
+  trait Symbol[+T] {// symbol is covariant in T
+     // DSL operations
+    def ~[U >: T](sym: Nonterminal) = Symbols(this :: List[Symbol[U]](sym))
+    def ~[U >: T](sym: Symbol[U]): Symbols[U] = Symbols(this :: List(sym))    
+  }
+  
+  /**
+   * The following operations are only used by the DSL
+   */
+  case class Symbols[T](syms: List[Symbol[T]]) {
+    def ~(sym: Symbol[T]) = Symbols(syms :+ sym)
+    def |(alt: Symbol[T]) = Alternatives(this :: List(Symbols(List(alt))))
+    def |(syms: Symbols[T]) = Alternatives(this :: List(syms))
+  }
+  
+  case class Alternatives[T](rhsList: List[Symbols[T]]) {
+    def |(alt: Symbol[T]) = Alternatives(rhsList :+ Symbols(List(alt)))
+    def |(syms: Symbols[T]) = Alternatives(rhsList :+ syms)
+  }
 
   /**
    * We use object factories to reduce the memory pressure while 
@@ -45,7 +64,11 @@ object CFGrammar {
       }
     }
     val name = sym.name
-    override def toString =  sym.toString        
+    override def toString =  sym.toString
+    // DSL operations
+    def ::=[T](rhses: Alternatives[T]) = rhses.rhsList.map(rhs => Rule(this, rhs.syms))
+    def ::=[T](rhs: Symbols[T]) = Rule(this, rhs.syms)
+    def ::=[T](rhs: Symbol[T]) = Rule(this, List(rhs))
   }
  
   /**
@@ -131,14 +154,27 @@ object CFGrammar {
         (if (rightSide.isEmpty) "\"\""
         else
           rightSideToString)
-    }
+    }    
   }
+    
+  case class Rules[T](l: List[Rule[T]])
+  implicit def listToRules[T](l: List[Rule[T]]) = Rules[T](l) 
+  
+  object Grammar {
+    /**
+     * Only used by the DSL
+     */
+    def apply[T](st: Nonterminal, rules: Seq[List[Rule[T]]]): Grammar[T] = {
+      Grammar(st, rules.toList.flatten)
+    }
+  }  
   
   /**
    * The type parameter is the type of the terminal
    */
-  case class Grammar[T](start: Nonterminal, rules: List[Rule[T]]) {
+  case class Grammar[T](start: Nonterminal, grammarRules: Rules[T]) {
 
+    val rules = grammarRules.l
     //used for efficiency
     lazy val nontermToRules = this.rules.groupBy(_.leftSide)
     lazy val nonTerminals = this.rules.map(_.leftSide).distinct
@@ -227,7 +263,7 @@ object CFGrammar {
         (i: Int) => !newNonterms.contains(Nonterminal(scala.Symbol(idPart + i))))(0)
       val newnt = Nonterminal(scala.Symbol(idPart + index))
       newNonterms += newnt
-      acc + (nt -> newnt)
+      acc + ((nt, newnt))
     })
     replaceMap
   }

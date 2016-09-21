@@ -5,12 +5,12 @@ import grammar.CFGrammar._
 import grammar.GrammarReaders.GrammarImplicit
 
 object ToolGrammarDSL extends Benchmark {
-  import GrammarDSL._   
+  import EBNFGrammarDSL._   
   import scala.language.postfixOps
   
   def benchmarkName = "ToolGrammar using DSL"
   def benchmarkSource = "lara-compliers-page"     
-  def ebnfGrammar = BNFGrammar('Goal, List(
+  def ebnfGrammar = ToolGrammar.ebnfGrammar /*BNFGrammar('Goal, List(
     'Goal -> 'MainObject ~ ('ClassDeclaration*), 
     //'MainObject ->  "object" ~ 'Identifier ~ "{" ~ "def" ~ "main" ~ "(" ~ ")" ~ ":" ~ "Unit" ~ "=" ~ "{" ~ ('Statement*) ~ "}" ~ "}",
     'MainObject ->  "object" ~ 'Identifier ~ "{" ~ ('Statement*) ~ "}",
@@ -36,5 +36,5 @@ object ToolGrammarDSL extends Benchmark {
       | "true" | "false" | 'Identifier | "this" | "new" ~ "Int"~"["~'Expression~"]" | "new" ~ 'Identifier ~ "(" ~ ")" 
       | "!" ~ 'Expression | "(" ~ 'Expression ~ ")" ),
     'Identifier -> "IDENTIFIER"     
-  ))
+  ))*/
 }

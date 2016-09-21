@@ -10,11 +10,11 @@ object EBNFGrammar {
    */ 
   sealed abstract class RegExp[+T] {
     // operators for the DSL
-    def |[W >: T, U <: W](other: RegExp[U]): RegExp[W] = RegOr[W]( this :: (List(other) : List[RegExp[W]]) )
+    /*def |[W >: T, U <: W](other: RegExp[U]): RegExp[W] = RegOr[W]( this :: (List(other) : List[RegExp[W]]) )
     def ~[W >: T, U <: W](other: RegExp[U]): RegExp[W] = RegConcat[W]( this :: (List(other) : List[RegExp[W]]) )    
     def * : RegExp[T] = RegClosure(this)
     def + : RegExp[T] = RegPlus(this)
-    def ? : RegExp[T] = RegOption(this)
+    def ? : RegExp[T] = RegOption(this)*/
   }
   case class RegOr[T](args: List[RegExp[T]]) extends RegExp[T] {
     override def toString = args.mkString(" | ")
@@ -76,7 +76,7 @@ object EBNFGrammar {
    */
   class NontermId(val sym: scala.Symbol) extends Sym[Nothing](sym) {
     // a DSL construct for creating a rule
-    def ->[T] (rhs: RegExp[T]) = BNFRule(this, rhs)                  
+    //def ->[T] (rhs: RegExp[T]) = BNFRule(this, rhs)                  
     override def toString = sym.toString
   }
   

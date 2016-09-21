@@ -22,8 +22,7 @@ import scala.concurrent.duration._
 import scala.concurrent.util._
 import java.util.concurrent._
 import GrammarReaders._
-import GrammarDSL._
-import EBNFGrammar._        
+import GrammarDSL._        
 
 object Main {
 
@@ -162,13 +161,12 @@ object Main {
         println("GNFGrammarLL2 ? " + GNFUtilities.isGNFGrammarLL2(gnfg))
       
       case "-testDSL" =>        
-        val defaultGrammar = BNFGrammar('S, List(
-          'S -> ("a" ~ 'P ~ "b" | ""),
-          'P  -> "r" ~ 'S
+        val defaultGrammar = Grammar('S, Seq(
+          'S ::= "a" ~ 'P ~ "b" | epsilon[String](),
+          List('P ::= "r" ~ 'S)
         ))
-        println("DefaultGrammar: "+defaultGrammar)
-        println("CFGrammar: "+defaultGrammar.cfGrammar)
-        println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar.cfGrammar))
+        println("DefaultGrammar: "+defaultGrammar)        
+        println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar))
         
       case "-testTool" => 
         val toolGrammar = ToolGrammarDSL.ebnfGrammar
@@ -204,6 +202,40 @@ object Main {
         val ptrees = cykParser.parseWithCYKTrees(Nonterminal(scala.Symbol("Goal")), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
         ptrees.take(10).zipWithIndex.foreach { case (t, i) =>
           println(s"Parse Tree $i: "+parseTreetoString(t))                                                  
+        }        
+      case "-testTraversal" =>
+        val exprGrammar = ExprGrammarDSL.grammar
+        println("isLL1: "+GrammarUtils.isLL1WithFeedback(exprGrammar))
+        val expr  = "IDENTIFIER * IDENTIFIER + IDENTIFIER"
+        val tokens =  expr.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
+        println("List of tokens: "+tokens.mkString("\n"))
+        val ptrees = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
+        
+        // ASTs for expressions
+        sealed abstract class  Expr
+        case class Id() extends Expr
+        case class Plus(l: Expr, r: Expr) extends Expr
+        case class Times(l: Expr, r: Expr) extends Expr
+        
+        /**
+         * Returns a partially applied operation. 
+         * For the root the input arguments will be empty
+         */
+        def postOrder[T](t: ParseTree[T]): Expr = t match {
+          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "+" ~ 'E)) =>            
+            Plus(postOrder(l), postOrder(r))
+          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "*" ~ 'E)) =>
+            Times(postOrder(l), postOrder(r))
+          case Node(rl, List(l)) if (rl == ('E ::= "IDENTIFIER")) =>
+            postOrder(l)
+          case Leaf(Terminal(t)) if t == "IDENTIFIER" => Id()
+          case Node(rl, children) =>             
+             throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map{ case n: Node[T] => n.r; case l: Leaf[T] => l.t}.mkString(",")}") 
+        }        
+        
+        if(ptrees.isEmpty) println("Cannot parse Expression!")
+        else {
+          println("AST: "+postOrder(ptrees.head))
         }        
       case _ =>
         println("Unknown option: " + option)              

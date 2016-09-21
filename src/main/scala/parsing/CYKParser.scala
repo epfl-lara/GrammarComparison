@@ -387,7 +387,11 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         List(Node(newRule, newChildren))
     }
     recoverParseTree(initTree) match {
-      case List(parseTree) => parseTree
+      case List(parseTree) => 
+        val Node(Rule(st, rhs), children) =  parseTree
+        // rename the start symbol to the original start symbol
+        val nname = st.name.split("-")(0)
+        Node(Rule(Nonterminal(scala.Symbol(nname)), rhs), children)
       case _ =>
         throw new IllegalStateException("Root contains a list of parse trees")
     }
