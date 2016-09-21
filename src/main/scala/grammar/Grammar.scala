@@ -13,39 +13,39 @@ object CFGrammar {
       oldId
     }
   }
+  
+  trait Symbol[+T] // symbol is covariant in T
 
+  /**
+   * We use object factories to reduce the memory pressure while 
+   * testing large programs.
+   */
   object Nonterminal {
     //a big factory for non-terminals
-    val nonterminalFactory = MutableMap[String, Nonterminal]()
-    def apply(name: String): Nonterminal = {
-      nonterminalFactory.getOrElse(name, {
-        val nt = new Nonterminal(SymbolId.newId, name)
-        nonterminalFactory += (name -> nt)
+    val nonterminalFactory = MutableMap[scala.Symbol, Nonterminal]()        
+    def apply(sym: scala.Symbol): Nonterminal = {
+      nonterminalFactory.getOrElse(sym, {
+        val nt = new Nonterminal(sym)
+        nonterminalFactory += (sym -> nt)
         nt
       })
     }
 
-    def unapply(nt: Nonterminal): Option[String] = {
-      Some(nt.name)
+    def unapply(nt: Nonterminal): Option[scala.Symbol] = {
+      Some(nt.sym)
     }
   }
 
-  trait Symbol[+T] { // symbol is covariant in T
-    def toUniqueString: String
-  }
-
-  class Nonterminal(val id: Long, val name: String) extends Symbol[Nothing] {
-    override def hashCode = id.toInt
+  class Nonterminal(val sym: scala.Symbol) extends Symbol[Nothing] {
+    override def hashCode = sym.hashCode()
     override def equals(other: Any) = {
       other match {
-        case other: Nonterminal => this.id == other.id
+        case other: Nonterminal => this.sym == other.sym
         case _ => false
       }
     }
-    override def toString = {
-      name
-    }
-    def toUniqueString = name + id
+    val name = sym.name
+    override def toString =  sym.toString        
   }
  
   /**
@@ -59,8 +59,7 @@ object CFGrammar {
         case _ => false
       }
     }
-    override def toString = obj.toString    
-    def toUniqueString = obj.toString
+    override def toString = obj.toString        
   }
 
   //a big factory for creating terminals
@@ -96,8 +95,7 @@ object CFGrammar {
         case _ => false
       }
     }
-    override def toString = name    
-    override def toUniqueString = name + id
+    override def toString = name        
   }
 
   case class Rule[T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
@@ -204,7 +202,7 @@ object CFGrammar {
   type SententialForms[T] = List[SententialForm[T]]
 
   def copy(s: Nonterminal): Nonterminal = {
-    Nonterminal(Util.freshName(Some(s.name)))
+    Nonterminal(scala.Symbol(Util.freshName(Some(s.name))))
   }
 
   /**
@@ -226,8 +224,8 @@ object CFGrammar {
       else alphanumPart
       //increment index as long as no 'nonterminal' of that name "idPart + index" exists
       val index = Util.repeatUntil((i: Int) => i + 1,
-        (i: Int) => !newNonterms.contains(Nonterminal(idPart + i)))(0)
-      val newnt = Nonterminal(idPart + index)
+        (i: Int) => !newNonterms.contains(Nonterminal(scala.Symbol(idPart + i))))(0)
+      val newnt = Nonterminal(scala.Symbol(idPart + index))
       newNonterms += newnt
       acc + (nt -> newnt)
     })
@@ -575,21 +573,24 @@ object CFGrammar {
       case (nt, List(Rule(_, rside))) if nt != g.start && !rside.contains(nt) => nt
     }
   }
+  
+  def freshNonterminal(nameOpt: Option[String] = None): Nonterminal = {
+    Nonterminal(scala.Symbol(Util.freshName(nameOpt)))
+  }
 
   /**
    * Creates a new grammar by appending a suffix to every non-terminal in the grammar 
    */
   def appendSuffix[T](suffix: String, g: Grammar[T]): Grammar[T] = {
     val newrules = g.rules.map {
-      case Rule(Nonterminal(lname), rhs) =>
+      case Rule(lnt: Nonterminal, rhs) =>
         val newrhs = rhs.map {
-          case Nonterminal(rname) => Nonterminal(rname + suffix)
+          case nt: Nonterminal => Nonterminal(scala.Symbol(nt.name + suffix))
           case t: Terminal[T] => t
         }
-        Rule(Nonterminal(lname + suffix), newrhs)
-    }
-    val Nonterminal(sname) = g.start
-    val news = Nonterminal(sname + suffix)
+        Rule(Nonterminal(scala.Symbol(lnt.name + suffix)), newrhs)
+    }    
+    val news = Nonterminal(scala.Symbol(g.start.name + suffix))
     Grammar[T](news, newrules)
   }
 }

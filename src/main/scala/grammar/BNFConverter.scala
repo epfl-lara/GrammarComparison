@@ -28,11 +28,11 @@ object BNFConverter {
    */
   def ebnfToGrammar[T](bnf: BNFGrammar[T]): Grammar[T] = {
     //create the set of nonterminals
-    var nonterms = bnf.rules.map(_.leftSide.name).toSet
+    var nonterms = bnf.rules.map(_.leftSide.sym).toSet
     def getFreshNonterm(name: String): Nonterminal = {
-      val freshname = Util.freshName(Some(name))
-      nonterms += freshname
-      Nonterminal(freshname)
+      val freshsym = scala.Symbol(Util.freshName(Some(name)))
+      nonterms += freshsym
+      Nonterminal(freshsym)
     }
 
     val allRules = bnf.rules.flatMap {
@@ -41,23 +41,26 @@ object BNFConverter {
         // From a Regexp, returns a symbol representing this regexp
         def regexToSymbol(re: RegExp[T]): (Symbol[T], List[Rule[T]]) = re match {
           case nid: NontermId =>
-            if (!nonterms.contains(nid.name))
+            if (!nonterms.contains(nid.sym))
               throw new InvalidGrammarException(s"Nonterminal $nid does not have any rules!")
-            (Nonterminal(nid.name), List())
+            (Nonterminal(nid.sym), List())
 
-          case s: Sym[T] =>
+          case term: Term[T] =>
+            (Terminal(term.content), List())
+
+          case s: Sym[T] => // here, sym may either represent terminal or non-terminal, this case could only happen if we read grammar as a string 
             s.obj match {
-              case str: String if nonterms.contains(str) => // this is a non-terminal
-                (Nonterminal(str), List())
+              case str: String if nonterms.contains(scala.Symbol(str)) =>
+                (Nonterminal(scala.Symbol(str)), List())
               case o =>
-                (Terminal(o.asInstanceOf[T]), List()) // note: here we simply cast to `T` (this should succeed)
+                (Terminal(o.asInstanceOf[T]), List()) // note: here we simply cast to `T` (to keep type checker happy), in fact T will be string here.
             }
 
           case RegClosure(sube) =>
             //create a new nonterminal 'C'
             val S = getFreshNonterm("star")
             //create new rules for closure
-            val newrules = regexToRules(S, RegOr(List(RegEmpty(), RegConcat(List(sube, new NontermId(S.name))))))
+            val newrules = regexToRules(S, RegOr(List(RegEmpty(), RegConcat(List(sube, new NontermId(S.sym))))))
             (S, newrules)
 
           case r @ RegPlus(sube) =>
@@ -65,13 +68,13 @@ object BNFConverter {
             val S = getFreshNonterm("plus")
             sube match {
               case sube: Sym[_] =>
-                val newrules = regexToRules(S, RegOr(List(sube, RegConcat(List(sube, new NontermId(S.name))))))
+                val newrules = regexToRules(S, RegOr(List(sube, RegConcat(List(sube, new NontermId(S.sym))))))
                 (S, newrules)
               case _ =>
                 //here, create a new symbol for sube
                 val T = getFreshNonterm("t")
                 val newrules = regexToRules(T, sube) ++
-                  regexToRules(S, RegOr(List(new NontermId(T.name), RegConcat(List(new NontermId(T.name), new NontermId(S.name))))))
+                  regexToRules(S, RegOr(List(new NontermId(T.sym), RegConcat(List(new NontermId(T.sym), new NontermId(S.sym))))))
                 (S, newrules)
             }
 
@@ -114,11 +117,11 @@ object BNFConverter {
             val (syms, newrules) = regexToRightSide(re)
             Rule[T](leftSide, syms) +: newrules
         }
-        val nt = Nonterminal(leftSide.toString)
+        val nt = Nonterminal(leftSide.sym)
         regexToRules(nt, rightSide)
       }
     }
-    val cfg = Grammar[T](Nonterminal(bnf.start.toString), allRules)
+    val cfg = Grammar[T](Nonterminal(bnf.start.sym), allRules)
     //println("Generated Regexp: "+generatedRegExp.mkString("\n"))
     cfg
   }

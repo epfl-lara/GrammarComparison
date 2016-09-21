@@ -86,7 +86,7 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
                   yield partR :+ nextNT
             }
             val lsides = nontermMapping.getOrElse(ntLeft, 
-                Set(Nonterminal(Util.freshName())) //create a fresh nonterminal for left side
+                Set(CFGrammar.freshNonterminal()) //create a fresh nonterminal for left side
                 ).toList
             val newrules = newRsides.flatMap(rside => lsides.map(Rule(_, rside)))
             rulesHypothesized ++= newrules

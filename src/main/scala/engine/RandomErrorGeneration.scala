@@ -100,7 +100,7 @@ class RandomErrorGeneration(g: Grammar[String], seed: Long) {
     val errRules = Util.removeAtIndex(leftRules, leftRuleIndex)
 
     //create a new-non-terminal with errrules, but, in which 'left' is replaced by 'newLeft'
-    val newLeft = Nonterminal(Util.freshName(Some(left.name)))
+    val newLeft = CFGrammar.freshNonterminal(Some(left.name))
     val newRules = CFGrammar.replace(errRules, Map(left -> newLeft)) //this is to avoid indirect left recursion,which is not supported by antlr
 
     val modrule = Rule(left, (right.take(rhsIndex) :+ newLeft) ++ right.drop(rhsIndex + 1))

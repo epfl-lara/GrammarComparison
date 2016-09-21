@@ -16,7 +16,7 @@ object LLEpslionEliminator {
       case Some(n) => n
       case _ => "N"
     }
-    val freshSym = Nonterminal(Util.freshName(Some(ntname)))
+    val freshSym = CFGrammar.freshNonterminal((Some(ntname)))
     freshSym
   }
 

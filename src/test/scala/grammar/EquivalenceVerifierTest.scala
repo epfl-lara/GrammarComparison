@@ -20,6 +20,9 @@ class EquivalenceVerifierTest extends FlatSpec with ShouldMatchers {
     maxSizeForVerification = 11)
   implicit val gctx = new GlobalContext()
   implicit val ectx = new EnumerationContext()
+  
+  import scala.language.implicitConversions
+  implicit def strToSym(str: String): scala.Symbol = scala.Symbol(str)
 
   "EquivalenceVerifier.maxMinWord" should " should be computed correctly for Olshansky1977" in {
     val verifier = new EquivalenceVerifier(Olshansky1977.reference.cfGrammar,
@@ -30,7 +33,7 @@ class EquivalenceVerifierTest extends FlatSpec with ShouldMatchers {
 
   "EquivalenceVerifier.getMinWord" should " should work correctly for Olshansky1977" in {
     val verifier = new EquivalenceVerifier(Olshansky1977.reference.cfGrammar,
-      Olshansky1977.student_grammars(0).grammar.cfGrammar)
+      Olshansky1977.student_grammars(0).grammar.cfGrammar)    
 
     //first testcase
     wordToString(verifier.getMinWord(List(Nonterminal("D1")), Terminal("("))) should equal("( ) )")

@@ -11,6 +11,9 @@ class GrammarUtilsTest extends FlatSpec with ShouldMatchers {
   import GrammarUtils._
 
   implicit val opctx = new GlobalContext()
+  
+  import scala.language.implicitConversions
+  implicit def strToSym(str: String): scala.Symbol = scala.Symbol(str)
 
   "GrammarUtils" should " tell why a grammar is not in LL(1) because of the first sets" in {
     val grammar =

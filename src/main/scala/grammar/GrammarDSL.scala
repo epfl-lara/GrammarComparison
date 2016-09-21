@@ -9,11 +9,11 @@ import scala.language.implicitConversions
  */
 object GrammarDSL {  
   // a symbol can be converted to a NontermId
-  implicit def symbolToRegId(sym: scala.Symbol) = new NontermId(sym.toString)
+  implicit def symbolToRegId(sym: scala.Symbol) = new NontermId(sym)
   // anything can be converted to a GenericRegId, symbols to NontermId, and empty strings to RegEmpty
   implicit def anyToRegExp[T](obj: T) =
     obj match {
-      case sym: scala.Symbol        => new NontermId(sym.toString)
+      case sym: scala.Symbol        => new NontermId(sym)
       case s: String if s.isEmpty() => new RegEmpty()
       case _                        => new Term(obj)
     } 

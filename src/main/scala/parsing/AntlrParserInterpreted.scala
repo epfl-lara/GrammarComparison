@@ -21,21 +21,21 @@ class AntlrParserInterpreted(ing: Grammar[String])
     //check if there is indirect left recursion. If yes, convert the grammar to GNF
     val g = convertGrammarForAntlrParsing(ing)
     //create a new start symbol    
-    val ns = Nonterminal(Util.freshName(Some(g.start.name)))
+    val ns = CFGrammar.freshNonterminal(Some(g.start.name))
     val nrs = Rule(ns, List[Symbol[String]](g.start))
     val ng = Grammar[String](ns, nrs +: g.rules)
 
     //make non-terminals start with lower case letters, if they don't already
     val oldnts = (ng.nonTerminals.map(_.name) ++ ng.terminals.map(_.toString)).toSet
     val replaceMap = ng.nonTerminals.collect {
-      case ont @ Nonterminal(name) if (name(0).isUpper) =>
-        val newname = name(0).toLower + name.substring(1)
+      case ont : Nonterminal if (ont.name(0).isUpper) =>
+        val newname = ont.name(0).toLower + ont.name.substring(1)
         val nnt =
           if (oldnts.contains(newname))
             //add a suffix to the newname
-            Nonterminal(newname + Util.freshNumber)
+            Nonterminal(scala.Symbol(newname + Util.freshNumber))
           else
-            Nonterminal(newname)
+            Nonterminal(scala.Symbol(newname))
         (ont -> nnt)
     }.toMap
 
@@ -142,7 +142,7 @@ class AntlrParserInterpreted(ing: Grammar[String])
     val tokenStream = new CommonTokenStream(lexEngine)
     val parser = antlrGrammar.createParserInterpreter(tokenStream)
     parser.removeErrorListeners()    
-    val tree = parser.parse(antlrGrammar.getRule(antlrg.start.toString).index)
+    val tree = parser.parse(antlrGrammar.getRule(antlrg.start.name).index)
     //System.out.println(tree.toStringTree())
     //println(parser.getNumberOfSyntaxErrors)                
 

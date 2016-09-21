@@ -51,14 +51,14 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
           secondHalf :+= sym
       }
       //second half will always at least two non-terminals
-      val rnt = Nonterminal(Util.freshName())
+      val rnt = CFGrammar.freshNonterminal()
       val rightRules = reduceArityOfRule(Rule[T](rnt, secondHalf))
       if (i == 1) {
         //in this case first half has only one non-terminal
         val newRule = Rule[T](rule.leftSide, firstHalf :+ rnt)
         newRule +: rightRules
       } else {
-        val lnt = Nonterminal(Util.freshName())
+        val lnt = CFGrammar.freshNonterminal()
         val leftRules = reduceArityOfRule(Rule[T](lnt, firstHalf))
         val newRule = Rule[T](rule.leftSide, List(lnt, rnt))
         newRule +: (leftRules ++ rightRules)

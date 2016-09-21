@@ -204,7 +204,7 @@ object GrammarUtils {
 
     var result = "%token " + join(tokens.values.toSeq, ", ") + ";\n";
 
-    val nonterminalmap = (for (nt <- g.nonTerminals) yield nt -> clean(nt.name + nt.id).replace("_", "")).toMap
+    val nonterminalmap = (for (nt <- g.nonTerminals) yield nt -> clean(nt.name).replace("_", "")).toMap
 
     result += "%nodefault\nRoot: " + nonterminalmap(g.start) + ";\n";
     result += "empty: ;\n";
@@ -213,7 +213,7 @@ object GrammarUtils {
       val rules = nontermRules._2
 
       result += nonterminalmap(nonterm) + " : " +
-        join(rules.map(rule => if (rule.rightSide.isEmpty) "empty" else join(rule.rightSide.map { case s: Terminal[T] => tokens.getOrElse(s, "'" + s.toString + "'") case n: Nonterminal => nonterminalmap(n) case s => s.toUniqueString }, " ")), " | ") + " ;\n";
+        join(rules.map(rule => if (rule.rightSide.isEmpty) "empty" else join(rule.rightSide.map { case s: Terminal[T] => tokens.getOrElse(s, "'" + s.toString + "'") case n: Nonterminal => nonterminalmap(n) case s => s.toString }, " ")), " | ") + " ;\n";
     }
     result
   }

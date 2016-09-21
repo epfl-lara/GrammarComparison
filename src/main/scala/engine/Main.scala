@@ -186,20 +186,22 @@ object Main {
             var IDENTIFIER : Int ;
             if ( IDENTIFIER < INTEGER_LITERAL )
                     IDENTIFIER = INTEGER_LITERAL ;
-                  else
-                    IDENTIFIER = IDENTIFIER * ( this . IDENTIFIER ( IDENTIFIER - INTEGER_LITERAL ) ) ;                
+                  else {
+                    IDENTIFIER = IDENTIFIER * ( this . IDENTIFIER ( IDENTIFIER - INTEGER_LITERAL ) ) ;
+                    IDENTIFIER = IDENTIFIER * IDENTIFIER - INTEGER_LITERAL ;
+                  }                
             return IDENTIFIER ; 
           }            
         }
         """        
         val toolExpr  = "IDENTIFIER * IDENTIFIER - INTEGER_LITERAL"
-        val tokens =  toolExpr.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
+        val tokens =  toolProg.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
         println("List of tokens: "+tokens.mkString("\n"))
         /*println("The grammar can parse the string: "+parse(toolGrammar.cfGrammar, tokens))
         println("Parse trees for the string: \n")        
         val ptrees = parseWithTrees(toolGrammar.cfGrammar, tokens)*/
         val cykParser = new CYKParser(toolGrammar.cfGrammar.cnfGrammar) 
-        val ptrees = cykParser.parseWithCYKTrees(Nonterminal("'Expression"), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
+        val ptrees = cykParser.parseWithCYKTrees(Nonterminal(scala.Symbol("Goal")), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
         ptrees.take(10).zipWithIndex.foreach { case (t, i) =>
           println(s"Parse Tree $i: "+parseTreetoString(t))                                                  
         }        

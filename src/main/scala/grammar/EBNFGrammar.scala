@@ -74,10 +74,10 @@ object EBNFGrammar {
   /**
    * A class that represents non-terminals appearing on the LHS of rules.   
    */
-  class NontermId(val name: String) extends Sym[Nothing](name) {
+  class NontermId(val sym: scala.Symbol) extends Sym[Nothing](sym) {
     // a DSL construct for creating a rule
     def ->[T] (rhs: RegExp[T]) = BNFRule(this, rhs)                  
-    override def toString = name
+    override def toString = sym.toString
   }
   
   case class RegEmpty() extends RegExp {

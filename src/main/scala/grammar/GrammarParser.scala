@@ -24,7 +24,7 @@ class GrammarParser extends RegexParsers {
     case name if name == "\"\"" => RegEmpty()
     case name => new Sym[String](name)
   }
-  def nontermRegId = nontermSymbol ^^ { case name => new NontermId(name) }
+  def nontermRegId = nontermSymbol ^^ { case name => new NontermId(scala.Symbol(name)) }
 
   //Precedence: () precedes unary operators,*,?,| precedes '.' precedes '|'
   def atom = regId | ("(" ~> regExp <~ ")")

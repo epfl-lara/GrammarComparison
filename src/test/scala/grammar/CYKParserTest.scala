@@ -12,6 +12,9 @@ class CYKParserTest extends FlatSpec with ShouldMatchers {
 
   implicit val gctx = new GlobalContext()
   implicit val opctx = new ParseContext()
+  
+  import scala.language.implicitConversions
+  implicit def strToSym(str: String): scala.Symbol = scala.Symbol(str)
 
   "The CYKParsers" should " tell if a sentence is recognized by a grammar" in {
     val grammar =

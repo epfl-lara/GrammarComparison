@@ -15,7 +15,7 @@ class SententialFormParser extends RegexParsers {
   
   def oneSymbol[T](sym: Symbol[T]) = sym match {
     case t@Terminal(name: String) => name ^^ { case _ => t}
-    case nt@Nonterminal(name) => name ^^ { case _ => nt}  
+    case nt : Nonterminal => nt.name ^^ { case _ => nt}  
   }
   
   def anySymbol(g: Grammar[String]) = {       

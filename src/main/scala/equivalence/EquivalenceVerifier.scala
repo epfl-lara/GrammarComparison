@@ -228,7 +228,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
 
   val alphabet = terminals(ig1).toList
   val (g1, g2) = {
-    val (gnf1, gnf2) = toGNF(ig1, ig2)
+    val (gnf1, gnf2) = toGNF(ig1, ig2)        
     (appendSuffix("1", gnf1), appendSuffix("2", gnf2))
   }  
   val ll2grammars = {
@@ -238,7 +238,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
 
   val (g, genum) = {
     //union of g1 and g2
-    val newstart = Nonterminal(utils.Util.freshName(Some("S")))
+    val newstart = CFGrammar.freshNonterminal(Some("S"))
     val newrules = (Rule(newstart, List[Symbol[T]](g1.start)) +: g1.rules) ++ (Rule(newstart, List[Symbol[T]](g2.start)) +: g2.rules)
     val gram = Grammar[T](newstart, newrules)
     //inline the right-sides of the start non-terminals as they are unit productions
@@ -310,7 +310,7 @@ class EquivalenceVerifier[T](ig1: Grammar[T], ig2: Grammar[T])
       List() //the sentential form generates no words starting with the prefix
     } else {
       //create a grammar that contains all the sentential forms
-      val nstart = Nonterminal(Util.freshName(Some("Ts")))
+      val nstart = CFGrammar.freshNonterminal(Some("Ts"))
       //note: we need to concatenate prefix to the derivatives
       val nrules = dervs.map(d => Rule(nstart, prefix +: d)) ++ genum.rules
       //unfortunately, adding support for enumerating sentential forms is hard

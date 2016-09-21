@@ -14,7 +14,7 @@ object GrammarBoundingHelper {
       case Some(n) => n + "-b"
       case _ => "N-b"
     }
-    val freshSym = Nonterminal(Util.freshName(Some(ntname)))  
+    val freshSym = CFGrammar.freshNonterminal(Some(ntname))
     freshSym
   }
   
@@ -27,7 +27,7 @@ object GrammarBoundingHelper {
     //remove everything after "-b" from the name of the non-terminal
     val endIndex = nt.name.indexOf("-b")
     if(endIndex >= 0) {
-      Nonterminal(nt.name.substring(0, endIndex))  
+      Nonterminal(scala.Symbol(nt.name.substring(0, endIndex)))  
     } else 
       nt    
   }

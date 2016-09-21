@@ -14,7 +14,7 @@ object GNFConverter {
 
   //var gnfNonterminals = Set[Nonterminal]()
   def freshNonterminal(name: Option[String]): Nonterminal = {
-    val freshSym = Nonterminal(Util.freshName(name))
+    val freshSym = CFGrammar.freshNonterminal(name)
     //gnfNonterminals += freshSym
     freshSym
   }
@@ -37,7 +37,7 @@ object GNFConverter {
     else {
       val alphas = leftRecur.map(_.rightSide.tail)
       val betas = rest.map(_.rightSide)
-      val Z = Nonterminal(Util.freshName(Some(nt.name)))
+      val Z = CFGrammar.freshNonterminal(Some(nt.name))
       (rest ++ betas.map(beta => Rule[T](nt, beta :+ Z)), 
         alphas.flatMap(alpha => List(Rule[T](Z, alpha :+ Z), Rule[T](Z, alpha))))
     }

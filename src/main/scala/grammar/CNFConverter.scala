@@ -11,7 +11,7 @@ object CNFConverter {
       case Some(n) => n + "-c"
       case _ => "N-c"
     }
-    val freshSym = Nonterminal(Util.freshName(Some(ntname)))  
+    val freshSym = CFGrammar.freshNonterminal(Some(ntname))  
     freshSym
   }
   

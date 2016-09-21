@@ -123,7 +123,7 @@ object GNFUtilities {
               val (rulesToFactor, rest) = rules.partition(_.rightSide.size >= 2)
               if (rulesToFactor.size >= 2) {
                 //create a new non-terminal to produce the suffix
-                val sufNT = Nonterminal(Util.freshName(Some("Suf")))
+                val sufNT = CFGrammar.freshNonterminal(Some("Suf"))
                 val sufRHS = rulesToFactor.map(_.rightSide.drop(1)) //drop the head from the rightsides
                 modRules ++= (Rule(nt, List(h, sufNT)) +: rest)
                 newRules ++= sufRHS.map(Rule(sufNT, _))

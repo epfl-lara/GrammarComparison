@@ -10,10 +10,13 @@ import grammar.examples.Olshansky1977
 
 
 class CountingTest extends FlatSpec with ShouldMatchers {
-  import GrammarReaders._
+  import GrammarReaders._  
   
   implicit val opctx = new GlobalContext(enableStats = false)
   implicit val enumctx = new EnumerationContext()
+  
+  import scala.language.implicitConversions
+  implicit def strToSym(str: String): scala.Symbol = scala.Symbol(str) 
   
   "getMinWord" should " should work correctly for Olshansky1977" in {    
     val wordGen =  new SizeBasedRandomAccessGenerator(Olshansky1977.reference.cfGrammar, 10)    
