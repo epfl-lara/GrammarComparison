@@ -1,15 +1,12 @@
+package grammarcomp
 package grammar
 
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import org.scalatest.OptionValues._
 import EBNFGrammar._
-import BNFConverter._
-import BNFGrammar._
-import utils._
 
-class GrammarTest extends FlatSpec with ShouldMatchers {
+class GrammarTest extends FlatSpec with Matchers {
   import GrammarReaders._
   import equivalence._
   import parsing._

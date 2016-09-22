@@ -1,20 +1,16 @@
+package grammarcomp
 package grammar
 
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import org.scalatest.OptionValues._
 import EBNFGrammar._
-import BNFConverter._
-import BNFGrammar._
-import utils._
 import equivalence._
 import grammar.examples._
 import equivalence.EquivalenceVerfier._
 
-class EquivalenceVerifierTest extends FlatSpec with ShouldMatchers {
+class EquivalenceVerifierTest extends FlatSpec with Matchers {
   import GrammarReaders._
-  import GrammarUtils._
 
   implicit val opctx = new EquivalenceVerificationContext(testsForVerification = 50,
     maxSizeForVerification = 11)

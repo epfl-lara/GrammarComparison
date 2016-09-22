@@ -1,12 +1,12 @@
+package grammarcomp
 package grammar
 
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import org.scalatest.OptionValues._
 import parsing._
 
-class GrammarUtilsTest extends FlatSpec with ShouldMatchers {
+class GrammarUtilsTest extends FlatSpec with Matchers {
   import GrammarReaders._
   import GrammarUtils._
 
@@ -42,8 +42,8 @@ W -> => Int V | , Int W"""
 
     GrammarUtils.isLL1(grammar) should be(true)
 
-    val parsed = (new LL1Parser(grammar)).parseWithTree(("Int" :: "," :: "Int" :: "=>" :: "Int" :: "$" :: Nil).map(Terminal.apply))
-    parsed should not be 'empty;
+    val parsed = new LL1Parser(grammar).parseWithTree(("Int" :: "," :: "Int" :: "=>" :: "Int" :: "$" :: Nil).map(Terminal.apply))
+    parsed should not be 'empty
 
     parsed.get should equal(
       Node(Rule(Nonterminal("Sp"), List(Terminal("Int"), Nonterminal("V"))),

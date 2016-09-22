@@ -1,16 +1,14 @@
+package grammarcomp
 package grammar
 
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import org.scalatest.OptionValues._
 import generators._
 import grammar.examples.Korenjak1966
 import grammar.examples.Olshansky1977
 
-
-class CountingTest extends FlatSpec with ShouldMatchers {
-  import GrammarReaders._  
+class CountingTest extends FlatSpec with Matchers {
   
   implicit val opctx = new GlobalContext(enableStats = false)
   implicit val enumctx = new EnumerationContext()

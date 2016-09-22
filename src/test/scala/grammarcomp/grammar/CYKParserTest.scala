@@ -1,13 +1,12 @@
+package grammarcomp
 package grammar
 
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import org.scalatest.OptionValues._
 import parsing._
-import grammar.examples.Olshansky1977
 
-class CYKParserTest extends FlatSpec with ShouldMatchers {
+class CYKParserTest extends FlatSpec with Matchers {
   import GrammarReaders._
 
   implicit val gctx = new GlobalContext()
