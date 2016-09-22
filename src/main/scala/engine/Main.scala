@@ -184,16 +184,17 @@ object Main {
         """
         val toolExpr = "IDENTIFIER * IDENTIFIER - INTEGER_LITERAL"
         val tokens = toolProg.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
-        println("List of tokens: " + tokens.mkString("\n"))
-        /*println("The grammar can parse the string: "+parse(toolGrammar.cfGrammar, tokens))
-        println("Parse trees for the string: \n")        
-        val ptrees = parseWithTrees(toolGrammar.cfGrammar, tokens)*/
+        //println("# of tokens: " + tokens.size)
+        val thouTokens = (0 to 100).map(_ => tokens).flatten.toList
+        println("# of tokens: " + thouTokens.size)
         val cykParser = new CYKParser(toolGrammar.cnfGrammar)
-        val ptrees = cykParser.parseWithCYKTrees(Nonterminal(scala.Symbol("Goal")), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
-        ptrees.take(10).zipWithIndex.foreach {
-          case (t, i) =>
-            println(s"Parse Tree $i: " + parseTreetoString(t))
-        }
+        if (!cykParser.parseWithTrees(tokens.map(Terminal[String])).isEmpty)
+          println("Parsed string!")
+        else println("Failed to parse string!")
+//        ptrees.take(10).zipWithIndex.foreach {
+//          case (t, i) =>
+//            println(s"Parse Tree $i: " + parseTreetoString(t))
+//        }
       case "-testTraversal" =>
         val exprGrammar = ExprGrammarDSL.grammar
         println("isLL1: " + GrammarUtils.isLL1WithFeedback(exprGrammar))
