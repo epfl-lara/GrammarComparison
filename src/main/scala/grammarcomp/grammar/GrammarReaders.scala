@@ -14,7 +14,7 @@ object GrammarReaders {
   def readFromConsole: BNFGrammar[String] = {
     println("Enter Rules in the format given by the regex: ([a-zA-Z] -> [a-zA-Z]+ \\n)+")
     val lines = Iterator.continually(StdIn.readLine).takeWhile(_ != "").toList
-    val (bnfG, errstr) = (new GrammarParser()).parseGrammar(lines)
+    val (bnfG, errstr) = new GrammarParser().parseGrammar(lines)
     if (bnfG.isDefined)
       bnfG.get
     else
@@ -23,7 +23,7 @@ object GrammarReaders {
   
   def readFromFile(filename: String) : BNFGrammar[String] = {
     val lines = scala.io.Source.fromFile(filename).getLines.toList
-    val (bnfG, errstr) = (new GrammarParser()).parseGrammar(lines)
+    val (bnfG, errstr) = new GrammarParser().parseGrammar(lines)
     if (bnfG.isDefined)
       bnfG.get
     else
@@ -33,7 +33,7 @@ object GrammarReaders {
   def readDerivation(g: Grammar[String]): List[SententialForm[String]] = {
     println("Enter derivation steps")
     val lines = Iterator.continually(StdIn.readLine).takeWhile(_ != "").toList
-    val (dervs, errstr) = (new SententialFormParser()).parseSententialForms(lines, g)
+    val (dervs, errstr) = new SententialFormParser().parseSententialForms(lines, g)
     if (errstr.isEmpty())
       dervs
     else
@@ -48,7 +48,7 @@ object GrammarReaders {
 
     def bnfgrammar(args: Any*): BNFGrammar[String] = {
       val string = sc.s(args: _*)
-      val (bnfG, errstr) = parser.parseGrammar(string.split("\r?\n").toList)
+      val (bnfG, errstr) = parser.parseGrammar(string.split("\r?\n").map(_.trim).filterNot(_.isEmpty).toList)
       if (bnfG.isDefined)
         bnfG.get
       else
