@@ -10,8 +10,8 @@ import scala.math.BigInt
 
 object RandomAccessGenerator {    
   //a three valued result of querying an element at an index 
-  sealed abstract class LookupResult[+T]
-  object NoElementAtIndex extends LookupResult
+  sealed abstract class LookupResult[T]
+  case class NoElementAtIndex[T]() extends LookupResult[T]
   case class Element[T](word: List[Terminal[T]]) extends LookupResult[T]
   val bigzero = BigInt(0)
 }
@@ -169,7 +169,7 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
 
     } else if (boundsCheck
       && index >= wordCounter.boundForNonterminal(nt, size))
-      NoElementAtIndex
+      NoElementAtIndex[T]()
     else {
       //choose a rule for 'nt' based on the size and index      
       val (rule, ruleIndex) = chooseRule(nt, size, index)

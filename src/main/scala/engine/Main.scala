@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 import scala.concurrent.util._
 import java.util.concurrent._
 import GrammarReaders._
-import GrammarDSL._        
+import GrammarDSL._
 
 object Main {
 
@@ -31,11 +31,9 @@ object Main {
     implicit val gctx = new GlobalContext()
     implicit val enumctx = new EnumerationContext()
 
-    val maxsize = 50
+    val maxsize = 100
     val raenum = new SizeBasedRandomAccessGenerator(g.fromCNF, maxsize)
     val size = maxsize
-
-    //for (size <- 1 to maxsize) {
 
     val spaceSize = raenum.wordCounter.boundForNonterminal(g.fromCNF.start, size)
     println("# words of size " + size + " : " + spaceSize)
@@ -43,32 +41,26 @@ object Main {
 
     val rand = new java.util.Random
     val rangeBits = spaceSize.bitLength - 1
-    val samples = 100000
+    val samples = 10
     val consec = false
     var i = 0
     var break = false
 
-    //val antlrParser = new parsing.AntlrParser(AntlrJavaGrammar.ebnfGrammar.cfGrammar)
+    val cykParser = new CYKParser(g.cnfGrammar)
     while (i < samples & !break) {
       //sampling uniformly from the space
       val index = if (consec) BigInt(i) else BigInt(new java.math.BigInteger(rangeBits, rand))
       //val index = i
       //println("word #: " + index)
-
       gctx.stats.updateCounter(1, "WordGenCalls")
       raenum.getWordAtIndex(g.start, size, index) match {
         case Element(w) =>
-          /*if (antlrParser.parse(w)) {
+          if (!cykParser.parseWithTrees(w).isEmpty) {
             println("Accepted word: " + w)
           } else
-            throw new IllegalStateException("Rejected word: " + w)*/
-          //            if (w.size != size)
-          //              throw new IllegalStateException("Word size is not equal to size: " + w)
-          if (index % 9797 == 0) //one in 9797 words
-            println(index + "th word " + wordToString(w))
-
+            throw new IllegalStateException("Rejected word: " + w)
+          println(index + "th word " + wordToString(w))
         case _ =>
-          //println("No word at index: " + index)
           break = true
       }
       i += 1
@@ -139,7 +131,7 @@ object Main {
       case "-evalQuiz" =>
         evalQuiz()
       case "-ra" =>
-        generateUsingRAGenerator(OracleJavaGrammar.ebnfGrammar.cfGrammar)
+        generateUsingRAGenerator(ToolGrammarDSL.grammar)
       case "-testEquiv" =>
         val gdb = exercises.GrammarDatabase.readGrammarDatabase(
           new java.io.File("exercises-data/GrammarDatabase.xml"), "exercises-data/")
@@ -150,7 +142,7 @@ object Main {
 
       case "-testParsing" =>
         val parser = new AntlrParser(VhdlGrammar1.ebnfGrammar.cfGrammar)
-        parser.parse(List(Terminal("IDENTIFIER")))        
+        parser.parse(List(Terminal("IDENTIFIER")))
 
       case "-temp" =>
         val g = bnfgrammar"""S -> '(' S ')' S | "" """
@@ -159,19 +151,18 @@ object Main {
         val gnfg = GNFConverter.toGNF(epg)
         println("GNFG: " + gnfg)
         println("GNFGrammarLL2 ? " + GNFUtilities.isGNFGrammarLL2(gnfg))
-      
-      case "-testDSL" =>        
+
+      case "-testDSL" =>
         val defaultGrammar = Grammar('S, List[Rules[String]](
           'S ::= "a" ~ 'P ~ "b" | epsilon(),
-          'P ::= "r" ~ 'S
-        ))
-        println("DefaultGrammar: "+defaultGrammar)        
-        println("isLL1: "+GrammarUtils.isLL1WithFeedback(defaultGrammar))
-        
-      case "-testTool" => 
+          'P ::= "r" ~ 'S))
+        println("DefaultGrammar: " + defaultGrammar)
+        println("isLL1: " + GrammarUtils.isLL1WithFeedback(defaultGrammar))
+
+      case "-testTool" =>
         val toolGrammar = ToolGrammarDSL.grammar
-        println("DefaultGrammar: "+toolGrammar)        
-        println("isLL1: "+GrammarUtils.isLL1WithFeedback(toolGrammar))
+        println("DefaultGrammar: " + toolGrammar)
+        println("isLL1: " + GrammarUtils.isLL1WithFeedback(toolGrammar))
         /*implicit val acts = new AmbiguityContext()
         println("isAmbiguous: "+(new AmbiguityChecker(toolGrammar.cfGrammar)).checkAmbiguityInStudentGrammar())*/
         import ParseTreeUtils._
@@ -190,54 +181,55 @@ object Main {
             return IDENTIFIER ; 
           }            
         }
-        """        
-        val toolExpr  = "IDENTIFIER * IDENTIFIER - INTEGER_LITERAL"
-        val tokens =  toolProg.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
-        println("List of tokens: "+tokens.mkString("\n"))
+        """
+        val toolExpr = "IDENTIFIER * IDENTIFIER - INTEGER_LITERAL"
+        val tokens = toolProg.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
+        println("List of tokens: " + tokens.mkString("\n"))
         /*println("The grammar can parse the string: "+parse(toolGrammar.cfGrammar, tokens))
         println("Parse trees for the string: \n")        
         val ptrees = parseWithTrees(toolGrammar.cfGrammar, tokens)*/
-        val cykParser = new CYKParser(toolGrammar.cnfGrammar) 
+        val cykParser = new CYKParser(toolGrammar.cnfGrammar)
         val ptrees = cykParser.parseWithCYKTrees(Nonterminal(scala.Symbol("Goal")), tokens.map(Terminal[String])).map(cykParser.cykToGrammarTree)
-        ptrees.take(10).zipWithIndex.foreach { case (t, i) =>
-          println(s"Parse Tree $i: "+parseTreetoString(t))                                                  
-        }        
+        ptrees.take(10).zipWithIndex.foreach {
+          case (t, i) =>
+            println(s"Parse Tree $i: " + parseTreetoString(t))
+        }
       case "-testTraversal" =>
         val exprGrammar = ExprGrammarDSL.grammar
-        println("isLL1: "+GrammarUtils.isLL1WithFeedback(exprGrammar))
-        val expr  = "IDENTIFIER * IDENTIFIER + IDENTIFIER"
-        val tokens =  expr.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
-        println("List of tokens: "+tokens.mkString("\n"))
+        println("isLL1: " + GrammarUtils.isLL1WithFeedback(exprGrammar))
+        val expr = "IDENTIFIER * IDENTIFIER + IDENTIFIER"
+        val tokens = expr.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
+        println("List of tokens: " + tokens.mkString("\n"))
         val ptrees = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
-        
+
         // ASTs for expressions
-        sealed abstract class  Expr
+        sealed abstract class Expr
         case class Id() extends Expr
         case class Plus(l: Expr, r: Expr) extends Expr
         case class Times(l: Expr, r: Expr) extends Expr
-        
+
         /**
-         * Returns a partially applied operation. 
+         * Returns a partially applied operation.
          * For the root the input arguments will be empty
          */
         def postOrder[T](t: ParseTree[T]): Expr = t match {
-          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "+" ~ 'E)) =>            
+          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "+" ~ 'E)) =>
             Plus(postOrder(l), postOrder(r))
           case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "*" ~ 'E)) =>
             Times(postOrder(l), postOrder(r))
           case Node(rl, List(l)) if (rl == ('E ::= "IDENTIFIER")) =>
             postOrder(l)
           case Leaf(Terminal(t)) if t == "IDENTIFIER" => Id()
-          case Node(rl, children) =>             
-             throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map{ case n: Node[T] => n.r; case l: Leaf[T] => l.t}.mkString(",")}") 
-        }        
-        
-        if(ptrees.isEmpty) println("Cannot parse Expression!")
+          case Node(rl, children) =>
+            throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[T] => n.r; case l: Leaf[T] => l.t }.mkString(",")}")
+        }
+
+        if (ptrees.isEmpty) println("Cannot parse Expression!")
         else {
-          println("AST: "+postOrder(ptrees.head))
-        }        
+          println("AST: " + postOrder(ptrees.head))
+        }
       case _ =>
-        println("Unknown option: " + option)              
+        println("Unknown option: " + option)
     }
     /*opctx.stats.updateCumTime(timer.timeWithoutGC, "TimeWithoutGC")
     opctx.stats.updateCumTime(timer.gcTime, "GCTime")
@@ -357,8 +349,8 @@ object Main {
   }
 
   def ambiguityTestDriver(g: Grammar[String])(implicit gctx: GlobalContext,
-    ambctx: AmbiguityContext,
-    ectx: EnumerationContext) = {
+                                              ambctx: AmbiguityContext,
+                                              ectx: EnumerationContext) = {
     val ambChecker = new AmbiguityChecker(g)
     ambChecker.checkForAmbiguity(startSize = 1, fastmode = true)
     /*.foreach {
@@ -441,9 +433,9 @@ object Main {
   }
 
   def equivTestDriver(ig1: Grammar[String], ig2: Grammar[String])(implicit gctx: GlobalContext,
-    eqctx: EquivalenceCheckingContext,
-    ectx: EnumerationContext,
-    pctx: ParseContext) {
+                                                                  eqctx: EquivalenceCheckingContext,
+                                                                  ectx: EnumerationContext,
+                                                                  pctx: ParseContext) {
     val equivChecker = new SamplingBasedEquivalenceChecker(ig1)
     //use continuous mode here 
     equivChecker.isEquivalentTo(ig2)
