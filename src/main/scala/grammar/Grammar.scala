@@ -71,6 +71,14 @@ object CFGrammar {
     def ::=[T](rhs: Symbols[T]) = Rule(this, rhs.syms)
     def ::=[T](rhs: Symbol[T]) = Rule(this, List(rhs))    
   }
+  
+  /**
+   * An trait that marks Terminals that represent classes of terminals.
+   * E.g. Identifier is a terminal that represents a set of identifiers
+   */
+  trait TerminalClass {
+    def contains(other: Any): Boolean 
+  }
  
   /**
    * generic terminals 
