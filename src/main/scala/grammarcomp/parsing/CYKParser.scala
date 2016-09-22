@@ -11,6 +11,7 @@ import scala.collection.mutable.HashSet
 import java.io._
 import grammar.utils._
 import scala.collection.immutable.Range
+import ParseTreeUtils._
 
 class CYKParser[T](G: Grammar[T]) extends Parser[T] {
   require(isInCNF(G, false))
@@ -19,16 +20,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
   //The mappings are represented as tries for space efficiency
   val parseTableCache = new TrieMap[Terminal[T], Set[Nonterminal]]()
 
-  def getRules: List[Rule[T]] = G.rules
-
-  /**
-   * A helper function for comparing terminals based on terminal classes
-   */
-  def compareTerminal(src: Terminal[T], other: Terminal[T]) =
-    src.obj match {
-      case tc: TerminalClass => tc.contains(other.obj)
-      case o                 => o == other.obj
-    }
+  def getRules: List[Rule[T]] = G.rules  
 
   def parse(w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     opctx.stats.updateCounter(1, "CYKParseCalls")
@@ -408,8 +400,12 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         val newRule = Rule(r.leftSide, newChildren.map {
           case Node(Rule(l, _), _)         => l
           case LeafWithSentinel(inp, sent) => sent
-        })
-        List(Node(newRule, newChildren))
+        })        
+        val finalTrees = newChildren.map {
+          case n: Node[T] => n
+          case LeafWithSentinel(inp, sent) => Leaf(inp) 
+        }
+        List(Node(newRule, finalTrees))
     }
     recoverParseTree(initTree) match {
       case List(parseTree) =>

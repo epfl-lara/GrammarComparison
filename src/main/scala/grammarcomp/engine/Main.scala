@@ -231,6 +231,15 @@ object Main {
         else {
           println("AST: " + postOrder(ptrees.head))
         }
+       
+        println("Testing LL(1) grammar... ")
+        val ll1grammar = ExprGrammarDSL.ll1grammar
+        println("isLL1: " + GrammarUtils.isLL1WithFeedback(ll1grammar))         
+        val ll1trees = ParseTreeUtils.parseWithTrees(ll1grammar, tokens)                        
+        if (ll1trees.isEmpty) println("Cannot parse Expression using LL(1) grammar!")
+        else {
+          println("LL(1) tree: "+ ParseTreeUtils.parseTreetoString(ll1trees.head))
+        }
       case _ =>
         println("Unknown option: " + option)
     }

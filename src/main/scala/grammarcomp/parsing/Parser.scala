@@ -34,6 +34,15 @@ case class Leaf[T](t: Terminal[T]) extends ParseTree[T]
 
 object ParseTreeUtils {
 
+  /**
+   * A helper function for comparing terminals based on terminal classes
+   */
+  def compareTerminal[T](src: Terminal[T], other: Terminal[T]) =
+    src.obj match {
+      case tc: TerminalClass => tc.contains(other.obj)
+      case o                 => o == other.obj
+    }
+
   def parseTreetoString[T](p: ParseTree[T]): String = {
     val spaceUnit = 4
     var str = ""
@@ -57,27 +66,27 @@ object ParseTreeUtils {
     pw.print(parseTreetoString(p))
     pw.close()
   }
-  
+
   def getParser[T](g: Grammar[T]) =
     if (GrammarUtils.isLL1(g)) {
-        new LL1Parser(g)
-      } else new CYKParser(g.cnfGrammar)
-  
+      new LL1Parser(g)
+    } else new CYKParser(g.cnfGrammar)
+
   def parse[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Boolean = {
     val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)      
-    parser.parse(terms)   
+    val parser = getParser(g)
+    parser.parse(terms)
   }
-  
+
   def parseWithTree[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
     val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)      
-    parser.parseWithTree(terms)   
+    val parser = getParser(g)
+    parser.parseWithTree(terms)
   }
-  
+
   def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
     val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)      
-    parser.parseWithTrees(terms)   
-  } 
+    val parser = getParser(g)
+    parser.parseWithTrees(terms)
+  }
 }

@@ -27,4 +27,12 @@ object ExprGrammarDSL {
   def grammar = Grammar('E, List[Rules[Token]](       
     'E ::= 'E ~ PlusToken() ~ 'E | 'E ~ TimesToken() ~ 'E |  IDSentinel | LBrace() ~ 'E ~ RBrace()  
   ))
+  
+  def ll1grammar = Grammar('E, List[Rules[Token]](       
+    'E ::= 'Atom ~ 'Suf, 
+    'Suf ::= PlusToken() ~ 'F | TimesToken() ~ 'F | epsilon(),
+    'F ::= 'Atom ~ 'Suf,
+    //'Suf2 ::= TimesToken() ~ 'F | PlusToken() ~ 'F | epsilon(),
+    'Atom ::= IDSentinel | LBrace() ~ 'E ~ RBrace()
+  ))
 }
