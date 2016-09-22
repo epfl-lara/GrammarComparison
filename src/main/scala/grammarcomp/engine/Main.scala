@@ -198,16 +198,16 @@ object Main {
 //            println(s"Parse Tree $i: " + parseTreetoString(t))
 //        }
       case "-testTraversal" =>
+        import ExprGrammarDSL._
         val exprGrammar = ExprGrammarDSL.grammar
         println("isLL1: " + GrammarUtils.isLL1WithFeedback(exprGrammar))
-        val expr = "IDENTIFIER * IDENTIFIER + IDENTIFIER"
-        val tokens = expr.split(" ").map(_.trim()).filterNot { _.isEmpty }.toList
-        println("List of tokens: " + tokens.mkString("\n"))
+        //x * y + z
+        val tokens = List(ID("x"), TimesToken(), ID("y"), PlusToken(), ID("z"))        
         val ptrees = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
 
         // ASTs for expressions
         sealed abstract class Expr
-        case class Id() extends Expr
+        case class Id(name: String) extends Expr
         case class Plus(l: Expr, r: Expr) extends Expr
         case class Times(l: Expr, r: Expr) extends Expr
 
@@ -215,16 +215,16 @@ object Main {
          * Returns a partially applied operation.
          * For the root the input arguments will be empty
          */
-        def postOrder[T](t: ParseTree[T]): Expr = t match {
-          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "+" ~ 'E)) =>
+        def postOrder(t: ParseTree[Token]): Expr = t match {
+          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ PlusToken() ~ 'E)) =>
             Plus(postOrder(l), postOrder(r))
-          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ "*" ~ 'E)) =>
+          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ TimesToken() ~ 'E)) =>
             Times(postOrder(l), postOrder(r))
-          case Node(rl, List(l)) if (rl == ('E ::= "IDENTIFIER")) =>
+          case Node(rl, List(l)) if (rl == ('E ::= IDSentinel)) =>
             postOrder(l)
-          case Leaf(Terminal(t)) if t == "IDENTIFIER" => Id()
+          case Leaf(Terminal(ID(str)))  => Id(str)
           case Node(rl, children) =>
-            throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[T] => n.r; case l: Leaf[T] => l.t }.mkString(",")}")
+            throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[Token] => n.r; case l: Leaf[Token] => l.t }.mkString(",")}")
         }
 
         if (ptrees.isEmpty) println("Cannot parse Expression!")

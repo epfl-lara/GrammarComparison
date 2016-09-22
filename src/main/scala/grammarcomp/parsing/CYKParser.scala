@@ -122,7 +122,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
               if (d(i)(i) == null)
                 d(i)(i) = getRules.collect { case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(i)) => l }.toSet //{X | G contains X->w(p)}             
               if (d(j)(j) == null)
-                d(j)(j) = getRules.collect { case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(i)) => l }.toSet //{X | G contains X->w(p)}
+                d(j)(j) = getRules.collect { case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(j)) => l }.toSet //{X | G contains X->w(p)}
 
               //add missing partitions to the stack
               for (k <- i + 1 to j) {
@@ -165,7 +165,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
       d(p)(p) = getRules.flatMap { //{X | G contains X->w(p)} 
         case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(p)) => List(l)
         case _ => Nil
-      }.toSet  
+      }.toSet
       for (q <- (p + 1) until N) d(p)(q) = Set()
     }
     for (k <- 2 to N) // substring length 
@@ -293,6 +293,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             val trule = G.nontermToRules(nt).find {
               _.rightSide match {
                 case List(t: Terminal[T]) => compareTerminal(t, w(i))
+                case _                    => false
               }
             }
             trule.map(r => Set((r, 0)))
@@ -386,17 +387,27 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
    * Removes the non-terminals introduced due to CNF Conversion
    */
   def cykToGrammarTree(initTree: ParseTree[T])(implicit opctx: GlobalContext): ParseTree[T] = {
+
+    // We a new leaf to allow storing a sentinel value.
+    case class LeafWithSentinel[T](input: Terminal[T], sentinel: Terminal[T]) extends ParseTree[T]
+
     def recoverParseTree(cnfTree: ParseTree[T]): List[ParseTree[T]] = cnfTree match {
-      case l: Leaf[T] => List(l)
+      //case l: Leaf[T] => List(l)      
+      case n @ Node(r @ Rule(nt, List(sent: Terminal[T])), List(Leaf(inp))) => // For base cases of CNF, try to preserve the sentinal and the input terminals 
+        if (CNFConverter.isCNFNonterminal(nt)) {
+          List(LeafWithSentinel(inp, sent))
+        } else List(n)
+
       case Node(r @ Rule(nt, _), children) if CNFConverter.isCNFNonterminal(nt) =>
         //this node should be skipped as this a temporary
         children.flatMap(recoverParseTree)
+
       case Node(r: Rule[T], children) =>
         val newChildren = children.flatMap(recoverParseTree)
         //update the rule 'r'
         val newRule = Rule(r.leftSide, newChildren.map {
-          case Node(Rule(l, _), _) => l
-          case Leaf(t)             => t
+          case Node(Rule(l, _), _)         => l
+          case LeafWithSentinel(inp, sent) => sent
         })
         List(Node(newRule, newChildren))
     }

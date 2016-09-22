@@ -6,7 +6,7 @@ scalaVersion := "2.11.2"
 
 organization := "ch.epfl.lara"
 
-mainClass in (Compile, run) := Some("engine.Main")
+mainClass in (Compile, run) := Some("grammarcomp.engine.Main")
 
 mainClass in oneJar := Some("engine.Main")
 
