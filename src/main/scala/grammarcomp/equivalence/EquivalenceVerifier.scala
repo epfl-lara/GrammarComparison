@@ -40,9 +40,9 @@ object EquivalenceVerfier {
     def toUniqueString = toString
   }
 
-  def senformToString(sf: SententialForm[_]) = "[" + sf.mkString(" ") + "]"
+  def senformToString[A](sf: SententialForm[A]) = "[" + sf.mkString(" ") + "]"
 
-  def senformsToString(sforms: SententialForms[_]) = {
+  def senformsToString[A](sforms: SententialForms[A]) = {
     if (sforms.isEmpty) "()"
     else {
       val head :: tail = sforms
