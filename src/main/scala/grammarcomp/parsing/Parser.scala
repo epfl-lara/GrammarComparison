@@ -34,14 +34,21 @@ case class Leaf[T](t: Terminal[T]) extends ParseTree[T]
 
 object ParseTreeUtils {
 
-  /**
-   * A helper function for comparing terminals based on terminal classes
-   */
-  def compareTerminal[T](src: Terminal[T], other: Terminal[T]) =
-    src.obj match {
-      case tc: TerminalClass => tc.contains(other.obj)
-      case o                 => o == other.obj
+  class TerminalWrapper[T](val t: Terminal[T]) {    
+    val key  = t.obj match {
+      case tc: TerminalClass => tc.terminalClass
+      case _ => t
     }
+    def compare(t: Terminal[T]) = t.obj match {
+      case tc: TerminalClass => key == tc.terminalClass
+      case _ => key == t
+    }
+    override def equals(obj: Any) = obj match {
+      case tw : TerminalWrapper[T] => key == tw.key
+      case _ => false
+    }
+    override def hashCode = key.hashCode()    
+  }
 
   def parseTreetoString[T](p: ParseTree[T]): String = {
     val spaceUnit = 4

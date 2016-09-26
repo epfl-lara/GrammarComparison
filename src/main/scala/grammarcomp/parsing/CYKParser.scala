@@ -18,15 +18,15 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
 
   //create two mappings from substrings to CYK parse table entry   
   //The mappings are represented as tries for space efficiency
-  val parseTableCache = new TrieMap[Terminal[T], Set[Nonterminal]]()
+  val parseTableCache = new TrieMap[TerminalWrapper[T], Set[Nonterminal]]()
 
-  def getRules: List[Rule[T]] = G.rules  
+  def getRules: List[Rule[T]] = G.rules
 
   def parse(w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     opctx.stats.updateCounter(1, "CYKParseCalls")
     val timer = new Stats.Timer()
 
-    val res = parseWithNonterminal(G.start, w)
+    val res = parseWithNonterminal(G.start, w.map(x => new TerminalWrapper(x)).toArray[TerminalWrapper[T]])
 
     opctx.stats.updateCounterTime(timer.timeWithoutGC(), "CYKParseTime", "CYKParseCalls")
     res
@@ -36,15 +36,16 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
 
     opctx.stats.updateCounter(1, "CYKParseSenformCalls")
     val timer = new Stats.Timer()
+    val termclassStr = w.map(x => new TerminalWrapper(x)).toArray
 
     def recParse(sfi: Int, sfj: Int, wi: Int, wj: Int): Boolean = {
       if (sfi == sfj) {
         //compute the word between indices wi and wj (inclusive)
-        val substr = w drop wi take (wj - wi + 1)
+        val substr = termclassStr.slice(wi, wj + 1) // drop wi take (wj - wi + 1)
         sf(sfi) match {
           case t: Terminal[T] =>
             //in this case substr should be 't'
-            if (List(t) == substr)
+            if (substr.size == 1 && substr(0).compare(t))
               true
             else false
           case nt: Nonterminal =>
@@ -77,7 +78,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
    * A top down version of CYK parsing.
    * This is more efficient for parsing in batch mode
    */
-  def parseWithNonterminal(nt: Nonterminal, w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
+  def parseWithNonterminal(nt: Nonterminal, w: Seq[TerminalWrapper[T]])(implicit opctx: GlobalContext): Boolean = {
 
     val N = w.size
     if (N == 0)
@@ -112,9 +113,9 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
               //here, we need to create all partitions  and add missing ones to the stack
               //initialize i,i and j,j entries of the matrix
               if (d(i)(i) == null)
-                d(i)(i) = getRules.collect { case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(i)) => l }.toSet //{X | G contains X->w(p)}             
+                d(i)(i) = getRules.collect { case Rule(l, List(t: Terminal[T])) if w(i).compare(t) => l }.toSet //{X | G contains X->w(p)}             
               if (d(j)(j) == null)
-                d(j)(j) = getRules.collect { case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(j)) => l }.toSet //{X | G contains X->w(p)}
+                d(j)(j) = getRules.collect { case Rule(l, List(t: Terminal[T])) if w(j).compare(t) => l }.toSet //{X | G contains X->w(p)}
 
               //add missing partitions to the stack
               for (k <- i + 1 to j) {
@@ -147,7 +148,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
   /**
    * A conventional CYK parser implementation
    */
-  def parseBottomUpWithTable(w: List[Terminal[T]])(implicit opctx: GlobalContext): (Boolean, Array[Array[Set[Symbol[T]]]]) = {
+  def parseBottomUpWithTable(w: Array[TerminalWrapper[T]])(implicit opctx: GlobalContext): (Boolean, Array[Array[Set[Symbol[T]]]]) = {
 
     val N = w.size
     // d(i)(j) contains the set of all non-terminals which can produce the string between i and j (inclusive)
@@ -155,7 +156,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     val S = G.start
     for (p <- 0 until N) {
       d(p)(p) = getRules.flatMap { //{X | G contains X->w(p)} 
-        case Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(p)) => List(l)
+        case Rule(l, List(t: Terminal[T])) if w(p).compare(t) => List(l)
         case _ => Nil
       }.toSet
       for (q <- (p + 1) until N) d(p)(q) = Set()
@@ -181,10 +182,10 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
    * The top-down version works better for batch processing
    */
   type ParseInfo[T] = (Rule[T], Int)
-  val parseTreeInfoCache = new TrieMap[Terminal[T], MultiMap[Nonterminal, ParseInfo[T]]]()
+  val parseTreeInfoCache = new TrieMap[TerminalWrapper[T], MultiMap[Nonterminal, ParseInfo[T]]]()
 
   //TODO: implement sharing across terminal classes
-  def computeParseTreeInfo(w: List[Terminal[T]])(implicit opctx: GlobalContext) = {
+  private def computeParseTreeInfo(w: Array[TerminalWrapper[T]])(implicit opctx: GlobalContext) = {
     require(w.size > 0)
 
     val N = w.size
@@ -201,7 +202,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         ;
       } else {
         //get the substring from i to j (inclusive)
-        val substr = w drop i take (j - i + 1)
+        val substr = w.slice(i, j + 1)
         val cacheHit = if (!underProcess) {
           //check if we have the substring in the cache          
           parseTreeInfoCache.lookup(substr)
@@ -219,7 +220,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             if (d(i)(i) == null) {
               d(i)(i) = new MultiMap[Nonterminal, ParseInfo[T]]()
               getRules.foreach {
-                case rule @ Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(i)) =>
+                case rule @ Rule(l, List(t: Terminal[T])) if (w(i).compare(t)) =>
                   d(i)(i).addBinding(l, (rule, 0))
                 case _ => ;
               }
@@ -227,7 +228,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             if (d(j)(j) == null) {
               d(j)(j) = new MultiMap[Nonterminal, ParseInfo[T]]()
               getRules.foreach {
-                case rule @ Rule(l, List(t: Terminal[T])) if compareTerminal(t, w(j)) =>
+                case rule @ Rule(l, List(t: Terminal[T])) if w(j).compare(t) =>
                   d(j)(j).addBinding(l, (rule, 0))
                 case _ => ;
               }
@@ -277,14 +278,15 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         case None       => Stream.empty
       }
     else {
-      val d = computeParseTreeInfo(w)
+      val termclassWord = w.map { t => new TerminalWrapper(t) }.toArray
+      val d = computeParseTreeInfo(termclassWord)
       def getCYKParseTree(i: Int, j: Int, nt: Nonterminal): Stream[ParseTree[T]] = {
         val treeInfo =
           if (i == j) {
             //handle the i = j case separately, because the info in the parse tree may be for other identifiers (if there is sharing across identifiers)
             val trule = G.nontermToRules(nt).find {
               _.rightSide match {
-                case List(t: Terminal[T]) => compareTerminal(t, w(i))
+                case List(t: Terminal[T]) => termclassWord(i).compare(t)
                 case _                    => false
               }
             }
@@ -293,7 +295,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             d(i)(j).get(nt)
           else {
             //get the treeInfo from the cache
-            val substr = w drop i take (j - i + 1)
+            val substr = termclassWord.slice(i, j + 1) //drop i take (j - i + 1)
             parseTreeInfoCache.lookup(substr).get.get(nt)
           }
         treeInfo match {
@@ -334,7 +336,8 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     if (N == 0)
       None
     else {
-      val d = computeParseTreeInfo(w)
+      val termclassWord = w.map { t => new TerminalWrapper(t) }.toArray
+      val d = computeParseTreeInfo(termclassWord)
 
       def findAmbiguousEntry(i: Int, j: Int, nt: Nonterminal): Option[(Nonterminal, List[Terminal[T]], Set[(Rule[T], Int)])] = {
         val treeInfo =
@@ -345,7 +348,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             None
           } else {
             //get the treeInfo from the cache
-            val substr = w drop i take (j - i + 1)
+            val substr = termclassWord.slice(i, j + 1)
             parseTreeInfoCache.lookup(substr).get.get(nt)
           }
         treeInfo match {
@@ -400,10 +403,10 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         val newRule = Rule(r.leftSide, newChildren.map {
           case Node(Rule(l, _), _)         => l
           case LeafWithSentinel(inp, sent) => sent
-        })        
+        })
         val finalTrees = newChildren.map {
-          case n: Node[T] => n
-          case LeafWithSentinel(inp, sent) => Leaf(inp) 
+          case n: Node[T]                  => n
+          case LeafWithSentinel(inp, sent) => Leaf(inp)
         }
         List(Node(newRule, finalTrees))
     }

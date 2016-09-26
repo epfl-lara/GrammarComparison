@@ -25,33 +25,28 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
       nt <- nonTerminals;
       rule <- g.nontermToRules(nt);
       t <- GrammarUtils.firstA(rule.rightSide, nullable, first) ++ (if (rule.rightSide.forall(nullable)) follow(nt) else Nil)
-    ) yield (nt, t, rule)
+    ) yield ((nt, new TerminalWrapper(t)) -> rule)
 
-    val parseTable: Map[Nonterminal, List[(Terminal[T], Rule[T])]] = parseTableBuild.groupBy(_._1).map {
+    val parseTable = parseTableBuild.toMap 
+    /*Map[(Nonterminal, TerminalWrapper[T]), Rule[T])]] = parseTableBuild.groupBy(_._1).map {
       case (k, vals) => k -> vals.map { case (_, t, rule) => (t, rule) }
-    }.toMap
+    }.toMap*/
 
-    // map all non-terminals to their nullable righthand side
+    /**
+     * Map all non-terminals to their nullable righthand side
+     */
     val nullableRHS = g.nontermToRules.map {
       case (nt, rules) => (nt -> rules.find(_.rightSide.forall(nullable)))
     }
     /**
      * Picks a rule to use based on the input terminal
      */
-    def findRule(nt: Nonterminal, inptOpt: Option[Terminal[T]]): Option[Rule[T]] = {
-      parseTable.get(nt) match {
-        case None => None
-        case Some(l) =>
-          inptOpt match {
-            case Some(inpt) =>
-              l.collectFirst {
-                case (t, rule) if compareTerminal(t, inpt) =>
-                  //println(s"foundRule for terminal: $inpt rule: $rule")
-                  rule
-              }
-            case None => // the symbol is epsilon
-              nullableRHS(nt)
-          }
+    def findRule(nt: Nonterminal, inptOpt: Option[TerminalWrapper[T]]): Option[Rule[T]] = {
+      inptOpt match {
+        case Some(inpt) =>
+          parseTable.get((nt, inpt))
+        case None => // the symbol is epsilon
+          nullableRHS(nt)
       }
     }
 
@@ -60,12 +55,12 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
       case (Right(EndOfRule(rule)) :: q, s) =>
         val n = rule.rightSide.length
         rec(q, s, Node(rule, acc.take(n).reverse) :: acc.drop(n))
-      case (Left(nt: Nonterminal) :: q, l) => findRule(nt, l.headOption) match { // also handles the end-of-stream case
+      case (Left(nt: Nonterminal) :: q, l) => findRule(nt, l.headOption.map(x => new TerminalWrapper(x))) match { // also handles the end-of-stream case
         case Some(rule) =>
           rec(rule.rightSide.map(Left.apply) ++ List(Right(EndOfRule(rule))) ++ q, s, acc)
         case _ => None
       }            
-      case (Left(t: Terminal[T]) :: q, a :: b) if compareTerminal(t, a) =>
+      case (Left(_: Terminal[T]) :: q, a :: b)  => // here (t, a) are guaranteed to be identical
         rec(q, b, Leaf(a) :: acc)     
       case _ =>
         None

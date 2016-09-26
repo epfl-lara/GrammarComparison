@@ -200,9 +200,10 @@ object Main {
       case "-testTraversal" =>
         import ExprGrammarDSL._
         val exprGrammar = ExprGrammarDSL.grammar
-        println("isLL1: " + GrammarUtils.isLL1WithFeedback(exprGrammar))
+        //println("isLL1: " + GrammarUtils.isLL1WithFeedback(exprGrammar))
         //x * y + z
         val tokens = List(ID("x"), TimesToken(), ID("y"), PlusToken(), ID("z"))        
+        //val tokens = List(ID("x")) //, TimesToken(), ID("y"), PlusToken(), ID("z"))
         val ptrees = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
 
         // ASTs for expressions

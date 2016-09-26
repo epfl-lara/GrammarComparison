@@ -79,7 +79,7 @@ object CFGrammar {
    * E.g. Identifier is a terminal that represents a set of identifiers
    */
   trait TerminalClass {
-    def contains(other: Any): Boolean 
+    def terminalClass: Any = this.getClass()
   }
  
   /**
@@ -130,7 +130,7 @@ object CFGrammar {
       }
     }
     override def toString = name        
-  }
+  }  
 
   case class Rule[+T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
 
