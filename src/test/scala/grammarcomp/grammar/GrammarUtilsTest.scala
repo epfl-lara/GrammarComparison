@@ -46,13 +46,13 @@ W -> => Int V | , Int W"""
     parsed should not be 'empty
 
     parsed.get should equal(
-      Node(Rule(Nonterminal("Sp"), List(Terminal("Int"), Nonterminal("V"))),
-        List(Leaf(Terminal("Int")),
-          Node(Rule(Nonterminal("V"), List(Terminal(","), Terminal("Int"), Nonterminal("W"))),
-            List(Leaf(Terminal(",")), Leaf(Terminal("Int")), Node(
+      PNode(Rule(Nonterminal("Sp"), List(Terminal("Int"), Nonterminal("V"))),
+        List(PLeaf(Terminal("Int")),
+          PNode(Rule(Nonterminal("V"), List(Terminal(","), Terminal("Int"), Nonterminal("W"))),
+            List(PLeaf(Terminal(",")), PLeaf(Terminal("Int")), PNode(
               Rule(Nonterminal("W"), List(Terminal("=>"), Terminal("Int"), Nonterminal("V"))),
-              List(Leaf(Terminal("=>")), Leaf(Terminal("Int")), Node(
+              List(PLeaf(Terminal("=>")), PLeaf(Terminal("Int")), PNode(
                 Rule(Nonterminal("V"), List(Terminal("$"))),
-                List(Leaf(Terminal("$")))))))))))
+                List(PLeaf(Terminal("$")))))))))))
   }
 }  

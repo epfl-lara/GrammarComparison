@@ -131,8 +131,20 @@ object CFGrammar {
     }
     override def toString = name        
   }  
+  
+  /*object Rule {
+    def apply[T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) = 
+      new Rule(leftSide, rightSide) 
+    
+    def unapply[T](r: Rule[T]): Option[(scala.Symbol, List[Any])] = {
+      Some((r.leftSide.sym, r.rightSide.map { 
+        case nt: Nonterminal => nt.sym
+        case t: Terminal[T] => t.obj
+      }))      
+    }   
+  }*/
 
-  case class Rule[+T](leftSide: Nonterminal, rightSide: List[Symbol[T]]) {
+  case class Rule[+T](val leftSide: Nonterminal, val rightSide: List[Symbol[T]]) {
 
     lazy val hash = leftSide.hashCode * 41 + rightSide.hashCode
     override def hashCode: Int = hash

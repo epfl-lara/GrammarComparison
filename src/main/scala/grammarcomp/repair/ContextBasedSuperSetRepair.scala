@@ -64,16 +64,16 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChec
 
     def collectChildren(tree: ParseTree[T]): Set[(Rule[T], Int)] = {
       tree match {
-        case Node(_, List()) | Leaf(_) => Set()
-        case Node(rule, children) =>
+        case PNode(_, List()) | PLeaf(_) => Set()
+        case PNode(rule, children) =>
           val foundChildren = (children flatMap {
-            case cn: Node[T] => collectChildren(cn)
+            case cn: PNode[T] => collectChildren(cn)
             case _ => List()
           }).toSet
           if (rule == context) {
             foundChildren ++ {
               children.zipWithIndex.collect {
-                case (Node(r, _), i) => (r, i)
+                case (PNode(r, _), i) => (r, i)
               }.toSet
             }
           } else {
@@ -99,10 +99,10 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChec
    */
   def collectParents(tree: ParseTree[T], key: ParseTree[T]): Set[(Rule[T], Int)] = {
     tree match {
-      case Node(_, List()) | Leaf(_) => Set()
-      case Node(nr, children) =>
+      case PNode(_, List()) | PLeaf(_) => Set()
+      case PNode(nr, children) =>
         val foundParents = (children flatMap {
-          case cn: Node[T] => collectParents(cn, key)
+          case cn: PNode[T] => collectParents(cn, key)
           case _ => List()
         }).toSet
         foundParents ++ children.zipWithIndex.collect {
@@ -147,7 +147,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChec
   @tailrec final def findRepairPoint(tree: ParseTree[T]): RepairType = tree match {
     case _ if gctx.abort =>
       Aborted
-    case n @ Node(contextRule, children) =>
+    case n @ PNode(contextRule, children) =>
       val repairPoint = children.zipWithIndex.foldLeft(None: Option[(Permissibility, ParseTree[T], Int)]) {
         case (None, (childTree, index)) =>
           isTreePermissible(childTree, contextRule, index) match {
@@ -169,20 +169,20 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChec
           //combination of the productions of the nonterminals on the right hand side are made explicit. 
           //Hence, in the subsequent iterations the current invalid combinations can be eliminated by splitting
           ExpandRightSides(contextRule)
-        case Some((_, childTree: Leaf[T], _)) =>
+        case Some((_, childTree: PLeaf[T], _)) =>
           //here the terminal is not feasible under the given context.
           //Therefore, the only fix is to remove the context rule
           RemoveRule(contextRule)
-        case Some((PermissibleInOtherContexts(), Node(r, _), index)) =>
+        case Some((PermissibleInOtherContexts(), PNode(r, _), index)) =>
           //the fix lies in this child
           PreventUnderContext(r, index, contextRule)
-        case Some((NotPermissible(), child: Node[T], _)) =>
+        case Some((NotPermissible(), child: PNode[T], _)) =>
           //recurse into the child tree as we have found a smaller infeasible subtree
           findRepairPoint(child)
         case Some(_) =>
           throw new IllegalStateException("Impossible match case taken !!")
       }
-    case l: Leaf[T] =>
+    case l: PLeaf[T] =>
       //we should be hitting this case 
       throw new IllegalStateException("The parse tree starts with a leaf: " + l)
   }
@@ -200,7 +200,7 @@ class ContextBasedSuperSetRepair[T](g: Grammar[T], ungenWord: Word[T], equivChec
     //when there is no permissible parse trees the grammar doesn't accept any valid string
     //hence, remove the first production      
     if (permissibleParseTrees.isEmpty && !gctx.abort) {
-      RemoveRules(List(gtree.asInstanceOf[Node[T]].r))
+      RemoveRules(List(gtree.asInstanceOf[PNode[T]].r))
     } else if (gctx.abort) {
       NoRepair("Operation Aborted.")
     } else {

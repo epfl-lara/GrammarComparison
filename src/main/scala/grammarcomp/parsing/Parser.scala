@@ -29,8 +29,47 @@ trait Parser[T] {
  * Parse trees associated to rules in CNF
  */
 trait ParseTree[T]
-case class Node[T](r: Rule[T], children: List[ParseTree[T]]) extends ParseTree[T]
-case class Leaf[T](t: Terminal[T]) extends ParseTree[T]
+case class PNode[T](r: Rule[T], children: List[ParseTree[T]]) extends ParseTree[T]
+case class PLeaf[T](t: Terminal[T]) extends ParseTree[T]
+
+/**
+ * Functions for matching our parse trees conveniently
+ */
+sealed abstract class NodeOrLeaf[T] {
+  override def toString = {
+    val spaceUnit = 4
+    var str = ""
+    def recStr(ptree: NodeOrLeaf[T], indentLevel: Int) {
+      val indent = " " * (indentLevel * spaceUnit)
+      str += "\n" + indent
+      ptree match {
+        case Node(r, children) =>
+          str += r.lhs
+          children.foreach(recStr(_, indentLevel + 1))
+        case Leaf(t) =>
+          str += t
+      }
+    }
+    recStr(this, 0)
+    str
+  }
+}
+case class Node[T](rule: ::=, children: List[NodeOrLeaf[T]]) extends NodeOrLeaf[T]
+case class Leaf[T](t: T) extends  NodeOrLeaf[T]
+
+object ParseTreeDSL {
+  def mapTree[T](p: ParseTree[T]): NodeOrLeaf[T] = {
+    p match {
+      case PNode(Rule(lhs, rhs), child) => 
+        Node(::=(lhs.sym, rhs.map{ case Nonterminal(sym) => sym; case Terminal(obj) => obj }),
+            child.map{ mapTree })
+      case PLeaf(Terminal(t)) => Leaf(t)
+    }
+  }
+}
+case class ::=(lhs: scala.Symbol, rhs: List[Any]) {
+  override def toString = lhs + " ::= " + rhs
+}
 
 object ParseTreeUtils {
 
@@ -48,7 +87,7 @@ object ParseTreeUtils {
       case _ => false
     }
     override def hashCode = key.hashCode()    
-  }
+  }  
 
   def parseTreetoString[T](p: ParseTree[T]): String = {
     val spaceUnit = 4
@@ -57,10 +96,10 @@ object ParseTreeUtils {
       val indent = " " * (indentLevel * spaceUnit)
       str += "\n" + indent
       ptree match {
-        case Node(r, children) =>
+        case PNode(r, children) =>
           str += r.leftSide
           children.foreach(recStr(_, indentLevel + 1))
-        case Leaf(t) =>
+        case PLeaf(t) =>
           str += t
       }
     }
@@ -85,15 +124,15 @@ object ParseTreeUtils {
     parser.parse(terms)
   }
 
-  def parseWithTree[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
+  /*def parseWithTree[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
     val terms = s.map(Terminal[T] _)
     val parser = getParser(g)
     parser.parseWithTree(terms)
-  }
+  }*/
 
-  def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
+  def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[NodeOrLeaf[T]] = {
     val terms = s.map(Terminal[T] _)
     val parser = getParser(g)
-    parser.parseWithTrees(terms)
+    parser.parseWithTrees(terms).map(t => ParseTreeDSL.mapTree(t))
   }
 }

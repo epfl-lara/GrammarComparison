@@ -274,7 +274,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     val N = w.size
     if (N == 0)
       G.nontermToRules(nt).find(_.rightSide.isEmpty) match {
-        case Some(rule) => Stream(Node(rule, Nil))
+        case Some(rule) => Stream(PNode(rule, Nil))
         case None       => Stream.empty
       }
     else {
@@ -301,22 +301,22 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
         treeInfo match {
           case Some(choices) if choices.size > 0 =>
             choices.toStream.flatMap {
-              case (r @ Rule(_, List(t: Terminal[T])), _) => Stream(Node(r, List(Leaf(w(i))))) // note: here add the input string.
+              case (r @ Rule(_, List(t: Terminal[T])), _) => Stream(PNode(r, List(PLeaf(w(i))))) // note: here add the input string.
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) =>
                 val leftStream = getCYKParseTree(i, i + partSize - 1, nt1)
                 val rightStream = getCYKParseTree(i + partSize, j, nt2)
                 // construct a cartesian product stream of left and right
                 leftStream.flatMap { left =>
                   rightStream.map { right =>
-                    Node(r, List(left, right))
+                    PNode(r, List(left, right))
                   }
                 }
             }
           /*choices.head match {
-              case (r @ Rule(_, List(t: Terminal[T])), _) => Some(Node(r, List(Leaf(t))))
+              case (r @ Rule(_, List(t: Terminal[T])), _) => Some(PNode(r, List(PLeaf(t))))
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) =>
                 (getCYKParseTree(i, i + partSize - 1, nt1), getCYKParseTree(i + partSize, j, nt2)) match {
-                  case (Some(left), Some(right)) => Some(Node(r, List(left, right)))
+                  case (Some(left), Some(right)) => Some(PNode(r, List(left, right)))
                   case _ => None
                 }
             }*/
@@ -387,35 +387,35 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     case class LeafWithSentinel[T](input: Terminal[T], sentinel: Terminal[T]) extends ParseTree[T]
 
     def recoverParseTree(cnfTree: ParseTree[T]): List[ParseTree[T]] = cnfTree match {
-      //case l: Leaf[T] => List(l)      
-      case n @ Node(r @ Rule(nt, List(sent: Terminal[T])), List(Leaf(inp))) => // For base cases of CNF, try to preserve the sentinal and the input terminals 
+      //case l: PLeaf[T] => List(l)      
+      case n @ PNode(r @ Rule(nt, List(sent: Terminal[T])), List(PLeaf(inp))) => // For base cases of CNF, try to preserve the sentinal and the input terminals 
         if (CNFConverter.isCNFNonterminal(nt)) {
           List(LeafWithSentinel(inp, sent))
         } else List(n)
 
-      case Node(r @ Rule(nt, _), children) if CNFConverter.isCNFNonterminal(nt) =>
+      case PNode(r @ Rule(nt, _), children) if CNFConverter.isCNFNonterminal(nt) =>
         //this node should be skipped as this a temporary
         children.flatMap(recoverParseTree)
 
-      case Node(r: Rule[T], children) =>
+      case PNode(r: Rule[T], children) =>
         val newChildren = children.flatMap(recoverParseTree)
         //update the rule 'r'
         val newRule = Rule(r.leftSide, newChildren.map {
-          case Node(Rule(l, _), _)         => l
+          case PNode(Rule(l, _), _)         => l
           case LeafWithSentinel(inp, sent) => sent
         })
         val finalTrees = newChildren.map {
-          case n: Node[T]                  => n
-          case LeafWithSentinel(inp, sent) => Leaf(inp)
+          case n: PNode[T]                  => n
+          case LeafWithSentinel(inp, sent) => PLeaf(inp)
         }
-        List(Node(newRule, finalTrees))
+        List(PNode(newRule, finalTrees))
     }
     recoverParseTree(initTree) match {
       case List(parseTree) =>
-        val Node(Rule(st, rhs), children) = parseTree
+        val PNode(Rule(st, rhs), children) = parseTree
         // rename the start symbol to the original start symbol
         val nname = st.name.split("-")(0)
-        Node(Rule(Nonterminal(scala.Symbol(nname)), rhs), children)
+        PNode(Rule(Nonterminal(scala.Symbol(nname)), rhs), children)
       case _ =>
         throw new IllegalStateException("Root contains a list of parse trees")
     }
@@ -519,10 +519,10 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
       def getParseTree(i: Int, j: Int, t: Nonterminal): Option[ParseTree] = {
         val a = nonTerminals.indexOf(t)
         P(i)(j)(a) match {
-          case Some((r@Rule(_, List(terminal: Terminal[T])), k)) => Some(Leaf.CNF(r, terminal))
+          case Some((r@Rule(_, List(terminal: Terminal[T])), k)) => Some(PLeaf.CNF(r, terminal))
           case Some((r@Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), k)) =>
             (getParseTree(i, k, nt1), getParseTree(i+k+1, j-k-1, nt2)) match {
-              case (Some(left), Some(right)) => Some(Node.CNF(r, left, right))
+              case (Some(left), Some(right)) => Some(PNode.CNF(r, left, right))
               case _ => None
             }
           case _ => None

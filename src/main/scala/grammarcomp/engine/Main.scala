@@ -216,16 +216,17 @@ object Main {
          * Returns a partially applied operation.
          * For the root the input arguments will be empty
          */
-        def postOrder(t: ParseTree[Token]): Expr = t match {
-          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ PlusToken() ~ 'E)) =>
+        import parsing.ParseTreeDSL._
+        def postOrder(t: NodeOrLeaf[Token]): Expr = t match {
+          case Node('E ::= List('E, PlusToken(), 'E), List(l, _, r)) =>
             Plus(postOrder(l), postOrder(r))
-          case Node(rl, List(l, _, r)) if (rl == ('E ::= 'E ~ TimesToken() ~ 'E)) =>
+          case Node('E ::= List('E, TimesToken(), 'E), List(l, _, r)) =>
             Times(postOrder(l), postOrder(r))
-          case Node(rl, List(l)) if (rl == ('E ::= IDSentinel)) =>
+          case Node('E ::= List(`IDSentinel`), List(l)) =>
             postOrder(l)
-          case Leaf(Terminal(ID(str)))  => Id(str)
+          case Leaf(ID(str)) => Id(str)
           case Node(rl, children) =>
-            throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[Token] => n.r; case l: Leaf[Token] => l.t }.mkString(",")}")
+            throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[Token] => n.rule; case l: Leaf[Token] => l.t }.mkString(",")}")
         }
 
         if (ptrees.isEmpty) println("Cannot parse Expression!")
@@ -239,7 +240,7 @@ object Main {
         val ll1trees = ParseTreeUtils.parseWithTrees(ll1grammar, tokens)                        
         if (ll1trees.isEmpty) println("Cannot parse Expression using LL(1) grammar!")
         else {
-          println("LL(1) tree: "+ ParseTreeUtils.parseTreetoString(ll1trees.head))
+          println("LL(1) tree: "+ ll1trees.head)
         }
       case _ =>
         println("Unknown option: " + option)

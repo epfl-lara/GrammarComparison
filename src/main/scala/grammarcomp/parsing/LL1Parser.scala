@@ -54,14 +54,14 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
       case (Nil, Nil) => acc.headOption
       case (Right(EndOfRule(rule)) :: q, s) =>
         val n = rule.rightSide.length
-        rec(q, s, Node(rule, acc.take(n).reverse) :: acc.drop(n))
+        rec(q, s, PNode(rule, acc.take(n).reverse) :: acc.drop(n))
       case (Left(nt: Nonterminal) :: q, l) => findRule(nt, l.headOption.map(x => new TerminalWrapper(x))) match { // also handles the end-of-stream case
         case Some(rule) =>
           rec(rule.rightSide.map(Left.apply) ++ List(Right(EndOfRule(rule))) ++ q, s, acc)
         case _ => None
       }            
       case (Left(_: Terminal[T]) :: q, a :: b)  => // here (t, a) are guaranteed to be identical
-        rec(q, b, Leaf(a) :: acc)     
+        rec(q, b, PLeaf(a) :: acc)     
       case _ =>
         None
     }

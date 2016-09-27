@@ -39,7 +39,7 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
       //println("Ref parse tree: "+refTree)
       var rulesHypothesized = Set[Rule[T]]()
       // Each node stores possibles rules of the solution which could apply
-      var possibleRules = Map[Node[T], Set[Rule[T]]]()
+      var possibleRules = Map[PNode[T], Set[Rule[T]]]()
       val nontermMapping = new Util.MultiMap[Nonterminal, Nonterminal]()
 
       //StartRef matches startG and vice-versa. 
@@ -47,12 +47,12 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
       nontermMapping.addBinding(cnfRef.start, g.start)
 
       def recBottomUpCompare(subtree: ParseTree[T]): Unit = subtree match {
-        case pnode @ Node(nr @ Rule(ntLeft, _), children) =>
+        case pnode @ PNode(nr @ Rule(ntLeft, _), children) =>
           //invoke the procedure recursively on each of the children
           children.map(recBottomUpCompare)
           val childSymsList = children.map {
-            case Leaf(t) => Set(t.asInstanceOf[Symbol[T]])
-            case chnode: Node[T] => possibleRules(chnode).map(_.leftSide.asInstanceOf[Symbol[T]])
+            case PLeaf(t) => Set(t.asInstanceOf[Symbol[T]])
+            case chnode: PNode[T] => possibleRules(chnode).map(_.leftSide.asInstanceOf[Symbol[T]])
           }
           //construct the set of possible rules of 'g' that matches childPossibs
           val initPots = g.rules.filter(_.rightSide.size == childSymsList.size)
@@ -101,14 +101,14 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
           rulesForNode.foreach(rule => nontermMapping.addBinding(ntLeft, rule.leftSide))
           possibleRules += (pnode -> rulesForNode)
 
-        case Leaf(t) =>
+        case PLeaf(t) =>
           //nothing has to be done here.
           ;
       }
 
-      var chosenRules = Map[Node[T],Rule[T]]()
+      var chosenRules = Map[PNode[T],Rule[T]]()
       def recTopDownGenerate(subtree: ParseTree[T], nt: Nonterminal) :  Unit = subtree match {
-        case pnode @ Node(_, children) => {
+        case pnode @ PNode(_, children) => {
           //pick a possible rule with 'nt' on the leftSide that has the minimum size for the right side          
           val minRule = possibleRules(pnode).filter(_.leftSide == nt).min(Ordering.by[Rule[T], Int] {
             //preferring rules with just terminals more
@@ -128,7 +128,7 @@ class SubsetRepair[T](equivChecker: EquivalenceChecker[T])
               }
           }
         }
-        case Leaf(t) =>
+        case PLeaf(t) =>
           ; //this case is not possible so return empty list of rules          
       }
 

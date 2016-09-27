@@ -30,5 +30,6 @@ object GrammarDSL {
       case sym: scala.Symbol        => Nonterminal(sym)
       case _                        => Terminal(obj)
     }    
-  def epsilon() = Symbols(List[Symbol[Nothing]]())  
+  def epsilon() = Symbols(List[Symbol[Nothing]]())
+  val ε = epsilon
 }

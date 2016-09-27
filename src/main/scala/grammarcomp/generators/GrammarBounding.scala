@@ -36,15 +36,15 @@ object GrammarBoundingHelper {
   
   import parsing._
   def remapParseTree[T](ptree: ParseTree[T]) : ParseTree[T] = ptree match {
-    case Node(Rule(lhs, rhs), children) =>
+    case PNode(Rule(lhs, rhs), children) =>
       val childTrees = children.map(remapParseTree)
       val newrule = Rule(getUnboundedNonterminal(lhs), rhs.map{ 
         case t : Terminal[T] => t
         case nt : Nonterminal =>
           getUnboundedNonterminal(nt)
       })
-      Node(newrule, childTrees)
-    case l : Leaf[T] => l           
+      PNode(newrule, childTrees)
+    case l : PLeaf[T] => l           
   } 
   
   import CNFConverter._

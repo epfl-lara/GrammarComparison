@@ -452,8 +452,8 @@ class SizeBasedRandomAccessGenerator[T](inG: Grammar[T], wordSize: Int)
         constructParseTreeForNonterminal(nt, ntsize, i).get
     }
     var i = -1
-    val parseTree = Node(rule, rhs.foldLeft(List[ParseTree[T]]()) {
-      case (acc, t: Terminal[T]) => acc :+ Leaf[T](t)
+    val parseTree = PNode(rule, rhs.foldLeft(List[ParseTree[T]]()) {
+      case (acc, t: Terminal[T]) => acc :+ PLeaf[T](t)
       case (acc, _) =>
         i += 1
         acc :+ childTrees(i)
