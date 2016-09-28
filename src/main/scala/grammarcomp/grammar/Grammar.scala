@@ -204,7 +204,8 @@ object CFGrammar {
     lazy val nonTerminals = this.rules.map(_.leftSide).distinct
     lazy val terminals = this.rules.flatMap(_.rightSide.collect { case t: Terminal[T] => t }).toSet
     lazy val nontermsInPostOrder = GrammarUtils.postOrder(this)
-    lazy val cnfGrammar = CNFConverter.toCNF(this)
+    lazy val twonfGrammar = CNFConverter.to2NF(this)
+    lazy val cnfGrammar = CNFConverter.toCNF(this)    
     lazy val fromCNF = CNFConverter.cnfToGrammar(cnfGrammar)
 
     def longString = {
@@ -458,7 +459,8 @@ object CFGrammar {
   case class Correct() extends NormFeedback
   case class Error[T](rule: Rule[T], msg: String) extends NormFeedback
 
-  def isNormalized[T](g: Grammar[T]) = g.rules.forall(r => isRuleNormalized(g.start, r) == Correct())
+  def isNormalized[T](g: Grammar[T], checkStart: Boolean = true) = 
+    g.rules.forall(r => isRuleNormalized(g.start, r, checkStart) == Correct())  
 
   def isRuleNormalized[T](start: Nonterminal, rule: Rule[T], checkStart: Boolean = true): NormFeedback[T] = {
     rule match {
@@ -488,11 +490,44 @@ object CFGrammar {
     }
   }
 
+  def isRuleIn2NF[T](g: Grammar[T], rule: Rule[T], checkStart: Boolean): NormFeedback[T] = rule match {
+    case Rule(leftSide, rightSide) =>
+      if (rightSide.size < 2)
+        Correct()
+      else if (rightSide.size == 2) {
+        if (!rightSide.forall(_.isInstanceOf[Nonterminal]))
+          Error(rule, "Right side of production has terminals")
+        else if (!checkStart) {
+          //check if the grammar does not have start symbol on the right right side if it is nullable
+          if (rule.rightSide.contains(g.start) &&
+            g.rules.contains(Rule(g.start, List())))
+            Error(rule, "Nullable start symbol appears on the right-side of the rule")
+          else
+            Correct()
+        } else
+          Correct()
+      } else
+        Error[T](rule, "Right side has more than two symbols")
+  }
+
+  def foldFeedback[T](g: Grammar[T], feedbackFun: Rule[T] => NormFeedback[T]) = {
+    g.rules.foldLeft(None: Option[Error[T]]) {
+      case (None, rule) =>
+        feedbackFun(rule) match {
+          case Correct()     => None
+          case err: Error[T] => Some(err)
+        }
+      case (fb, rule) => fb
+    }
+  }
+
   /**
    * Checks if a grammar is in CNF form
    */
   def isInCNF[T](g: Grammar[T], checkStart: Boolean = true): Boolean = !getRuleNotInCNF(g, checkStart).isDefined
-
+  
+  def isIn2NF[T](g: Grammar[T], checkStart: Boolean = true): Boolean = !getRuleNotIn2NF(g, checkStart).isDefined
+  
   /**
    * When checkStart is set to true it will always consider the start symbol
    * appearing on the right-side as an error, irrespective of whether it is
@@ -500,42 +535,20 @@ object CFGrammar {
    */
   def getRuleNotInCNF[T](g: Grammar[T], checkStart: Boolean = true): Option[Error[T]] = {
 
-    def isRuleInCNF(rule: Rule[T], checkStart: Boolean): NormFeedback[T] = rule match {
+    def isRuleInCNF(rule: Rule[T]): NormFeedback[T] = rule match {
       case Rule(leftSide, rightSide) =>
         isRuleNormalized(g.start, rule, checkStart) match {
-          case Correct() =>
-            if (rightSide.size < 2)
-              Correct()
-            else if (rightSide.size == 2) {
-              if (!rightSide.forall(_.isInstanceOf[Nonterminal]))
-                Error(rule, "Right side of production has terminals")
-              else if (!checkStart) {
-                //check if the grammar does not have start symbol on the right right side if it is nullable
-                if (rule.rightSide.contains(g.start) &&
-                  g.rules.contains(Rule(g.start, List())))
-                  Error(rule, "Nullable start symbol appears on the right-side of the rule")
-                else
-                  Correct()
-              } else
-                Correct()
-            } else
-              Error[T](rule, "Right side has more than two symbols")
-          case other =>
-            other
+          case Correct() => isRuleIn2NF(g, rule, checkStart)           
+          case other => other
         }
     }
-    g.rules.foldLeft(None: Option[Error[T]]) {
-      case (None, rule) =>
-        isRuleInCNF(rule, checkStart) match {
-          case Correct() =>
-            None
-          case err: Error[T] =>
-            Some(err)
-        }
-      case (fb, rule) => fb
-    }
+    foldFeedback(g, isRuleInCNF)    
   }
 
+  def getRuleNotIn2NF[T](g: Grammar[T], checkStart: Boolean = true): Option[Error[T]] = {    
+    foldFeedback(g, isRuleIn2NF(g, _, checkStart))    
+  }
+  
   def getRuleNotInGNF[T](g: Grammar[T]): Option[Error[T]] = {
     def isRuleInGNF(rule: Rule[T])  = rule match {
       case Rule(leftSide, rightSide) =>
@@ -552,16 +565,7 @@ object CFGrammar {
             other
         }
     }
-    g.rules.foldLeft(None: Option[Error[T]]) {
-      case (None, rule) =>
-        isRuleInGNF(rule) match {
-          case Correct() =>
-            None
-          case err: Error[T] =>
-            Some(err)
-        }
-      case (fb, rule) => fb
-    }
+    foldFeedback(g, isRuleInGNF)
   }
 
   def isInGNF[T](g: Grammar[T]) = !getRuleNotInGNF(g).isDefined

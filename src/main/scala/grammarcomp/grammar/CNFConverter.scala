@@ -255,7 +255,11 @@ object CNFConverter {
       g
   }
 
-  def toCNF[T](grammar: Grammar[T]): Grammar[T] = {
+  /**
+   * This a normal form that allows epsilon and unit productions.
+   * Used by CYK parser to produce good parse trees.
+   */
+  def to2NF[T](grammar: Grammar[T]): Grammar[T] = {
     val dumpGrammar = (title: String) => (g: Grammar[T]) => {
       println(title + " phase: ");
       println("----------------");
@@ -272,7 +276,27 @@ object CNFConverter {
       //andThen dumpGrammar("Unproductive Rules")    						    						
       andThen reduceArity
       //andThen dumpGrammar("Reducing Arity")
-      andThen removeEpsilonProductions
+      andThen simplify
+      //andThen dumpGrammar("Remove Unreachables")
+      andThen pullStartToTop)
+
+    transformations(grammar)
+  }
+  
+  /**
+   * This normal form extends the 2NF form by removing epsilon and unit productions.
+   */
+  def toCNF[T](grammar: Grammar[T]): Grammar[T] = {
+    val dumpGrammar = (title: String) => (g: Grammar[T]) => {
+      println(title + " phase: ");
+      println("----------------");
+      println(g);
+      println("=======");
+      g
+    }
+
+    val transformations = ( //dumpGrammar("") andThen      
+      removeEpsilonProductions[T] _
       //andThen dumpGrammar("Epsilon Productions")
       andThen removeUnitProductions
       //andThen dumpGrammar("Unit Productions")
@@ -280,7 +304,7 @@ object CNFConverter {
       //andThen dumpGrammar("Remove Unreachables")
       andThen pullStartToTop)
 
-    transformations(grammar)
+    transformations(grammar.twonfGrammar)
   }
   
   /**

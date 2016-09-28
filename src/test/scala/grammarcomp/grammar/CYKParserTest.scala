@@ -11,7 +11,7 @@ class CYKParserTest extends FlatSpec with Matchers {
 
   implicit val gctx = new GlobalContext()
   implicit val opctx = new ParseContext()
-  
+
   import scala.language.implicitConversions
   implicit def strToSym(str: String): scala.Symbol = scala.Symbol(str)
 
@@ -33,12 +33,12 @@ Det -> a"""
     val s1 = ("she eats a fish with a fork".split(" ") map Terminal.apply _).toList
     val s2 = ("she eats with fish with a fork".split(" ") map Terminal.apply _).toList
     val res1 = parser.parse(s1)
-    val res2 = parser.parse(s2)    
+    val res2 = parser.parse(s2)
     res1 should be(true)
     res2 should be(false)
   }
 
-  "The CYKParsers" should "parse with the tree" in {
+  "The CYKParsers" should "should parse a simple grammar" in {
     val grammar =
       grammar"""S -> AS B | a
 AS -> A S
@@ -58,7 +58,8 @@ B -> b"""
     parser.parse(s1) should be(true)
     parser.parse(s2) should be(false)
   }
-  
+
+  // tests for parsing sentential forms  
   "The CYKParsers" should " tell if a sentence is recognized by a sentential form of Olshansky1977" in {
     val g = grammar"""S49 -> '(' D1 | '(' X2 | '(' S2c102
 B1 -> '(' Bc481 | ')'
@@ -68,12 +69,39 @@ Dc471 -> '(' Bc481 D1 | ')' D1
 S2c102 -> '(' X2 X2 | '(' S2c102 X2
 S11 -> '(' D1
 S22 -> '(' X2 | '(' S2c102
-X2 -> ')' | ')' S22""" 
-    val parser = new CYKParser(g.cnfGrammar)    
+X2 -> ')' | ')' S22"""
+    val parser = new CYKParser(g.cnfGrammar)
     val word = "( ) ) )".split(" ") map Terminal.apply
     val sf = List(Nonterminal("D1"), Nonterminal("X2"))
-    val res1 = parser.parseWithSententialForm(sf, word.toList)       
-    res1 should be(true)    
+    val res1 = parser.parseWithSententialForm(sf, word.toList)
+    res1 should be(true)
   }
-  
+
+  // tests for checking parsing of 2NF grammars 
+  "The CYKParsers" should " should be able to create trees on a 2NF expression grammar" in {
+    val g = grammar"""E -> V Suf
+				Suf -> '+' E | '*' E | ""
+				V -> '(' E ')' | ID"""
+    //println("2NF grammar: "+g.twonfGrammar)
+    val parser = new CYKParser(g.twonfGrammar)
+    val word = "ID + ID * ID * ( ID )".split(" ").map(tok => Terminal(tok.trim())).toList
+    //println("Parsing string: "+word.mkString(" "))
+    val trees = parser.parseWithTrees(word)
+    //println("Tree: "+ParseTreeUtils.parseTreetoString(trees(0)))
+    val res1 = !trees.isEmpty
+    res1 should be(true)
+  }
+
+  "The CYKParsers" should " should be able to create trees on a 2NF if-then-else grammar" in {
+    val g = grammar"""S ::= pstmt | if '(' c ')' S Opt
+    Opt -> "" | else S"""
+    //println("2NF grammar: " + g.twonfGrammar)
+    val parser = new CYKParser(g.twonfGrammar)
+    val word = "if ( c ) if ( c ) pstmt else pstmt".split(" ").map(tok => Terminal(tok.trim())).toList
+    //println("Parsing string: " + word.mkString(" "))
+    val trees = parser.parseWithTrees(word)
+    //println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
+    val res1 = !trees.isEmpty
+    res1 should be(true)
+  }
 }
