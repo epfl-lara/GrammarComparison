@@ -104,4 +104,19 @@ X2 -> ')' | ')' S22"""
     val res1 = !trees.isEmpty
     res1 should be(true)
   }
+  
+  "The CYKParsers" should " should be able to handle unit productions" in {
+    val g = grammar"""E ::= F
+    F ::= ID"""
+    val parser = new CYKParser(g.twonfGrammar)
+    val word = List(Terminal("ID"))
+    val trees = parser.parseWithTrees(word)
+    //println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
+    val res1 =
+      trees(0) match {
+        case PNode(Rule(Nonterminal('E), _), _) => true
+        case _                                   => false
+      }    
+    res1 should be(true)
+  }
 }

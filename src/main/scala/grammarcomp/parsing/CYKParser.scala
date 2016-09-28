@@ -395,7 +395,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
                   }
                 }
               case (r @ Rule(_, List(nt: Nonterminal)), _) => // unit production
-                getCYKParseTree(i, j, nt)
+                getCYKParseTree(i, j, nt).map{ t => PNode(r, List(t)) }
             }
           case _ =>
             //println("Cannot find tree!")
