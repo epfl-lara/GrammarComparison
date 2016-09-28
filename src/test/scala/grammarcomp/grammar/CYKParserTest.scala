@@ -119,4 +119,21 @@ X2 -> ')' | ')' S22"""
       }    
     res1 should be(true)
   }
+  
+  "The CYKParsers" should " should be able to handle epsilon productions" in {
+    val g = grammar"""E ::= G A
+    G ::= A F
+    F ::= ID
+    A ::= """""
+    val parser = new CYKParser(g.twonfGrammar)
+    val word = List(Terminal("ID"))
+    val trees = parser.parseWithTrees(word)
+//    /println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
+    val res1 =
+      trees(0) match {
+        case PNode(Rule(Nonterminal('E), _), _) => true
+        case _                                   => false
+      }    
+    res1 should be(true)
+  }
 }

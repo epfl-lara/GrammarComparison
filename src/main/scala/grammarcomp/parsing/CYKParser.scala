@@ -382,9 +382,9 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
             choices.toStream.flatMap {
               case (r @ Rule(_, List(t: Terminal[T])), _) => Stream(PNode(r, List(PLeaf(w(i))))) // note: here add the input character.
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), 0) => // here nt1 reduces to epsilon
-                getEpsilonDerivation(nt1) #:: getCYKParseTree(i, j, nt2)
+                getCYKParseTree(i, j, nt2).map{ t => PNode(r, List(getEpsilonDerivation(nt1), t)) }
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) if partSize == j - i + 1 => // here nt2 reduces to epsilon
-                getCYKParseTree(i, j, nt1) ++ Stream(getEpsilonDerivation(nt2))
+                getCYKParseTree(i, j, nt1).map{ t => PNode(r, List(t, getEpsilonDerivation(nt2))) }
               case (r @ Rule(_, List(nt1: Nonterminal, nt2: Nonterminal)), partSize) =>
                 val leftStream = getCYKParseTree(i, i + partSize - 1, nt1)
                 val rightStream = getCYKParseTree(i + partSize, j, nt2)
