@@ -55,14 +55,14 @@ sealed abstract class NodeOrLeaf[T] {
   }
 }
 case class Node[T](rule: ::=, children: List[NodeOrLeaf[T]]) extends NodeOrLeaf[T]
-case class Leaf[T](t: T) extends  NodeOrLeaf[T]
+case class Leaf[T](t: T) extends NodeOrLeaf[T]
 
 object ParseTreeDSL {
   def mapTree[T](p: ParseTree[T]): NodeOrLeaf[T] = {
     p match {
-      case PNode(Rule(lhs, rhs), child) => 
-        Node(::=(lhs.sym, rhs.map{ case Nonterminal(sym) => sym; case Terminal(obj) => obj }),
-            child.map{ mapTree })
+      case PNode(Rule(lhs, rhs), child) =>
+        Node(::=(lhs.sym, rhs.map { case Nonterminal(sym) => sym; case Terminal(obj) => obj }),
+          child.map { mapTree })
       case PLeaf(Terminal(t)) => Leaf(t)
     }
   }
@@ -73,21 +73,21 @@ case class ::=(lhs: scala.Symbol, rhs: List[Any]) {
 
 object ParseTreeUtils {
 
-  class TerminalWrapper[T](val t: Terminal[T]) {    
-    val key  = t.obj match {
+  class TerminalWrapper[T](val t: Terminal[T]) {
+    val key = t.obj match {
       case tc: TerminalClass => tc.terminalClass
-      case _ => t
+      case _                 => t
     }
     def compare(t: Terminal[T]) = t.obj match {
       case tc: TerminalClass => key == tc.terminalClass
-      case _ => key == t
+      case _                 => key == t
     }
     override def equals(obj: Any) = obj match {
-      case tw : TerminalWrapper[T] => key == tw.key
-      case _ => false
+      case tw: TerminalWrapper[T] => key == tw.key
+      case _                      => false
     }
-    override def hashCode = key.hashCode()    
-  }  
+    override def hashCode = key.hashCode()
+  }
 
   def parseTreetoString[T](p: ParseTree[T]): String = {
     val spaceUnit = 4
@@ -113,14 +113,16 @@ object ParseTreeUtils {
     pw.close()
   }
 
-  def getParser[T](g: Grammar[T]) =
-    if (GrammarUtils.isLL1(g)) {
-      new LL1Parser(g)
-    } else new CYKParser(g.cnfGrammar)
-
   def parse[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Boolean = {
     val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)
+    val parser =
+      if (GrammarUtils.isLL1(g)) {
+        println("[Info] Using LL(1) Parsing Algorithm")
+        new LL1Parser(g)
+      } else {
+        println("[Info] Using CYK Parsing Algorithm")
+        new CYKParser(g.cnfGrammar)
+      }
     parser.parse(terms)
   }
 
@@ -132,7 +134,14 @@ object ParseTreeUtils {
 
   def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[NodeOrLeaf[T]] = {
     val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)
+    val parser =
+      if (GrammarUtils.isLL1(g)) {
+        println("[Info] Using LL(1) Parsing Algorithm")
+        new LL1Parser(g)
+      } else {
+        println("[Info] Using CYK Parsing Algorithm")
+        new CYKParser(g.twonfGrammar)
+      }
     parser.parseWithTrees(terms).map(t => ParseTreeDSL.mapTree(t))
   }
 }
