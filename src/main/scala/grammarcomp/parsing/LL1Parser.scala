@@ -14,8 +14,15 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
   def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     parseWithTree(s).nonEmpty
   }
+
+  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] =
+    parseWithFeedback(s) match {
+      case p: Parsed[T] => Some(p.parseTrees.head)
+      case _             => None
+    }
+  
   //Returns one possible grammar list
-  def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
+  def parseWithFeedback(s: List[Terminal[T]])(implicit opctx: GlobalContext): InternalFeedback[T] = {
     require(GrammarUtils.isLL1(g))
 
     val (nullable, first, follow) = GrammarUtils.nullableFirstFollow(g)
@@ -50,26 +57,22 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
       }
     }
 
-    @tailrec def rec(current: List[Either[Symbol[T], EndOfRule]], s: List[Terminal[T]], acc: List[ParseTree[T]]): Option[ParseTree[T]] = (current, s) match {
-      case (Nil, Nil) => acc.headOption
+    @tailrec def rec(current: List[Either[Symbol[T], EndOfRule]], s: List[Terminal[T]], acc: List[ParseTree[T]]): InternalFeedback[T] = (current, s) match {
+      case (Nil, Nil) => new Parsed(Stream(acc.head))
       case (Right(EndOfRule(rule)) :: q, s) =>
         val n = rule.rightSide.length
         rec(q, s, PNode(rule, acc.take(n).reverse) :: acc.drop(n))
       case (Left(nt: Nonterminal) :: q, l) => findRule(nt, l.headOption.map(x => new TerminalWrapper(x))) match { // also handles the end-of-stream case
         case Some(rule) =>
           rec(rule.rightSide.map(Left.apply) ++ List(Right(EndOfRule(rule))) ++ q, s, acc)
-        case _ => None
+        case _ => 
+          LLFeedback(nt, l.headOption)
       }            
       case (Left(_: Terminal[T]) :: q, a :: b)  => // here (t, a) are guaranteed to be identical
-        rec(q, b, PLeaf(a) :: acc)     
-      case _ =>
-        None
+        rec(q, b, PLeaf(a) :: acc)           
     }
     rec(Left(g.start) :: Nil, s, Nil)
-  }
+  }   
 
-  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = parseWithTree(s) match {
-    case Some(t) => Stream(t)
-    case _       => Stream.empty
-  }
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = parseWithFeedback(s) 
 }

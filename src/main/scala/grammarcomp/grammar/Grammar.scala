@@ -296,6 +296,8 @@ object CFGrammar {
   /*def renameAutoSymbols(nonterms: Set[Nonterminal], rules: List[Rule]) : List[Rule] ={    
     replace(rules, genRenameMap(nonterms)) 
   }*/
+  
+  def isInternalNonterminal(nt: Nonterminal) = nt.name.contains('-')
 
   /**
    * Important: this function has to be deterministic.

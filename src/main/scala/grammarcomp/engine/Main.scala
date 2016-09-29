@@ -57,7 +57,7 @@ object Main {
       gctx.stats.updateCounter(1, "WordGenCalls")
       raenum.getWordAtIndex(g.start, size, index) match {
         case Element(w) =>
-          if (!cykParser.parseWithTrees(w).isEmpty) {
+          if (!cykParser.parseWithTree(w).isEmpty) {
             println("Accepted word: " + w)
           } else
             throw new IllegalStateException("Rejected word: " + w)
@@ -190,7 +190,7 @@ object Main {
         val thouTokens = (0 to 100).map(_ => tokens).flatten.toList
         println("# of tokens: " + thouTokens.size)
         val cykParser = new CYKParser(toolGrammar.cnfGrammar)
-        if (!cykParser.parseWithTrees(tokens.map(Terminal[String])).isEmpty)
+        if (cykParser.parseWithTrees(tokens.map(Terminal[String])).isInstanceOf[Parsed[String]])
           println("Parsed string!")
         else println("Failed to parse string!")
 //        ptrees.take(10).zipWithIndex.foreach {
@@ -204,7 +204,10 @@ object Main {
         //x * y + z
         val tokens = List(ID("x"), TimesToken(), ID("y"), PlusToken(), ID("z"))        
         //val tokens = List(ID("x")) //, TimesToken(), ID("y"), PlusToken(), ID("z"))
-        val ptrees = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
+        val feedback = ParseTreeUtils.parseWithTrees(exprGrammar, tokens)
+        /*val cykp = new CYKParser(exprGrammar.twonfGrammar)
+        println("Two nf grammar: "+exprGrammar.twonfGrammar)
+        val feedback = cykp.parseWithTrees(tokens.map(Terminal[Token] _))*/
 
         // ASTs for expressions
         sealed abstract class Expr
@@ -228,20 +231,24 @@ object Main {
           case Node(rl, children) =>
             throw new IllegalStateException(s"Rule: $rl Children Rules: ${children.map { case n: Node[Token] => n.rule; case l: Leaf[Token] => l.t }.mkString(",")}")
         }
-
-        if (ptrees.isEmpty) println("Cannot parse Expression!")
-        else {
-          println("AST: " + postOrder(ptrees.head))
-        }
+        feedback match {          
+          case p: Success[Token] =>
+            //println("Parse tree: "+p.parseTrees.head)            
+            println("AST: " + postOrder(p.parseTrees.head))
+          case err => 
+            println("Cannot parse Expression: "+err)
+        }        
        
         println("Testing LL(1) grammar... ")
         val ll1grammar = ExprGrammarDSL.ll1grammar
         println("isLL1: " + GrammarUtils.isLL1WithFeedback(ll1grammar))         
-        val ll1trees = ParseTreeUtils.parseWithTrees(ll1grammar, tokens)                        
-        if (ll1trees.isEmpty) println("Cannot parse Expression using LL(1) grammar!")
-        else {
-          println("LL(1) tree: "+ ll1trees.head)
-        }
+        val ll1fb = ParseTreeUtils.parseWithTrees(ll1grammar, tokens)
+        ll1fb match {          
+          case p: Success[Token] => 
+            println("LL(1) tree: "+ p.parseTrees.head)
+          case err => 
+            println("Cannot parse Expression using LL(1) grammar: "+err)
+        }        
       case _ =>
         println("Unknown option: " + option)
     }

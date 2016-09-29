@@ -12,6 +12,11 @@ import java.io._
 import grammar.utils._
 import scala.collection.immutable.Range
 
+trait InternalFeedback[T]
+class Parsed[T](val parseTrees: Stream[ParseTree[T]]) extends InternalFeedback[T]
+case class CYKFeedback[T](cyktable: List[(Int, Int, Set[Nonterminal])]) extends InternalFeedback[T]
+case class LLFeedback[T](nt: Nonterminal, char: Option[Terminal[T]]) extends InternalFeedback[T]
+
 trait Parser[T] {
   def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean
   /**
@@ -22,7 +27,7 @@ trait Parser[T] {
   /**
    * Returns all parse trees of the string `s` as a stream.
    */
-  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]]
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): InternalFeedback[T]
 }
 
 /**
@@ -69,6 +74,24 @@ object ParseTreeDSL {
 }
 case class ::=(lhs: scala.Symbol, rhs: List[Any]) {
   override def toString = lhs + " ::= " + rhs
+}
+
+trait ParseFeedback[T]
+class Success[T](val parseTrees: Stream[NodeOrLeaf[T]]) extends ParseFeedback[T]
+case class CYKError[T](cykTable: List[(Int, Int, Set[Nonterminal])]) extends ParseFeedback[T] {
+  override def toString =
+    "Substrings that are parsable by at least one nonterminal:\n" +
+      cykTable.collect {
+        case (i, j, nts) if !nts.isEmpty => s"d($i,$j) = { ${nts.mkString(",")} }"
+      }.mkString("\n")
+}
+case class LL1Error[T](nt: Nonterminal, char: Option[Terminal[T]]) extends ParseFeedback[T] {
+  override def toString = {
+    char match {
+      case Some(c) => s"No production of $nt applies to character: $c"
+      case None    => s"No production of $nt applies to epsilon (End-of-stream)"
+    }
+  }
 }
 
 object ParseTreeUtils {
@@ -126,13 +149,7 @@ object ParseTreeUtils {
     parser.parse(terms)
   }
 
-  /*def parseWithTree[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
-    val terms = s.map(Terminal[T] _)
-    val parser = getParser(g)
-    parser.parseWithTree(terms)
-  }*/
-
-  def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): Stream[NodeOrLeaf[T]] = {
+  def parseWithTrees[T](g: Grammar[T], s: List[T])(implicit opctx: GlobalContext): ParseFeedback[T] = {
     val terms = s.map(Terminal[T] _)
     val parser =
       if (GrammarUtils.isLL1(g)) {
@@ -142,6 +159,10 @@ object ParseTreeUtils {
         println("[Info] Using CYK Parsing Algorithm")
         new CYKParser(g.twonfGrammar)
       }
-    parser.parseWithTrees(terms).map(t => ParseTreeDSL.mapTree(t))
+    parser.parseWithTrees(terms) match {
+      case p: Parsed[T]          => new Success(p.parseTrees.map(t => ParseTreeDSL.mapTree(t)))
+      case CYKFeedback(fdb) => CYKError(fdb)
+      case LLFeedback(nt, char)  => LL1Error(nt, char)
+    }
   }
 }

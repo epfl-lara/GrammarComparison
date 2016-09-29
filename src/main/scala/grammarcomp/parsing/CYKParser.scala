@@ -345,14 +345,14 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     d
   }
 
-  def parseWithCYKTrees(nt: Nonterminal, w: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
+  def parseWithCYKTrees(nt: Nonterminal, w: List[Terminal[T]])(implicit opctx: GlobalContext): InternalFeedback[T] = {
     val N = w.size
     if (N == 0)
       G.nontermToRules(nt).find(_.rightSide.isEmpty) match {
-        case Some(rule) => Stream(PNode(rule, Nil))
-        case None       => Stream.empty
+        case Some(rule) => new Parsed(Stream(PNode(rule, Nil)))
+        case None       => CYKFeedback(List())
       }
-    else {
+    else {      
       val termclassWord = w.map { t => new TerminalWrapper(t) }.toArray
       val d = computeParseTreeInfo(termclassWord)
       def getCYKParseTree(i: Int, j: Int, nt: Nonterminal): Stream[ParseTree[T]] = {
@@ -398,11 +398,26 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
                 getCYKParseTree(i, j, nt).map{ t => PNode(r, List(t)) }
             }
           case _ =>
-            //println("Cannot find tree!")
+            //println("Cannot find tree!")           
             Stream.empty
         }
       }
-      getCYKParseTree(0, N - 1, nt)
+      val restrees = getCYKParseTree(0, N - 1, nt)
+      if(restrees.isEmpty) {
+        // generate feedback
+        val cykTable =
+          for (k <- 1 to N; i <- 0 to N - k; j = i + k - 1) yield {
+            (i, j,
+              (if (d(i)(j) != null) d(i)(j).keySet.toSet
+              else parseTreeInfoCache.lookup(termclassWord.slice(i, j)) match {
+                case Some(info) => info.keySet.toSet
+                case None       => Set[Nonterminal]()
+              }).filterNot(CFGrammar.isInternalNonterminal))
+          }
+        CYKFeedback(cykTable.toList)
+      } else {
+        new Parsed(restrees)
+      }
     }
   }
 
@@ -420,7 +435,7 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     }
   }
 
-  def parseWithCYKTrees(w: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = parseWithCYKTrees(G.start, w)
+  def parseWithCYKTrees(w: List[Terminal[T]])(implicit opctx: GlobalContext): InternalFeedback[T] = parseWithCYKTrees(G.start, w)
 
   /**
    * Cannot detect ambiguities due to epsilon.
@@ -515,10 +530,18 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
     }
     recoverParseTree(initTree) match {
       case List(parseTree) =>
-        val PNode(Rule(st, rhs), children) = parseTree
-        // rename the start symbol to the original start symbol
-        val nname = st.name.split("-")(0)
-        PNode(Rule(Nonterminal(scala.Symbol(nname)), rhs), children)
+        parseTree match {
+          case PNode(Rule(st, rhs), children) if CFGrammar.isInternalNonterminal(st) => // new start symbol ?            
+            rhs match {
+              case List(nt: Nonterminal) => // unit production ?
+                children.head // ignore the production
+              case _ => // the unit production has been eliminated
+                // rename the start symbol to the original start symbol
+                val nname = st.name.split("-")(0)
+                PNode(Rule(Nonterminal(scala.Symbol(nname)), rhs), children)
+            }
+          case n => n 
+        }
       case _ =>
         throw new IllegalStateException("Root contains a list of parse trees")
     }
@@ -526,13 +549,16 @@ class CYKParser[T](G: Grammar[T]) extends Parser[T] {
 
   def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
     parseWithCYKTrees(s) match {
-      case cnftree #:: tail => Some(cykToGrammarTree(cnftree))
+      case p: Parsed[T] => Some(cykToGrammarTree(p.parseTrees.head))
       case _                => None
     }
   }
 
-  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): Stream[ParseTree[T]] = {
-    parseWithCYKTrees(s).map { t => cykToGrammarTree(t) }
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = {
+    parseWithCYKTrees(s) match {
+      case p: Parsed[T] => new Parsed(p.parseTrees map { t => cykToGrammarTree(t) })
+      case fb => fb 
+    }
   }
 
   def parseBottomUp(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {

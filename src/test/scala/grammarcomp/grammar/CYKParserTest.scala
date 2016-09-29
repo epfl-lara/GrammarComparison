@@ -88,7 +88,7 @@ X2 -> ')' | ')' S22"""
     //println("Parsing string: "+word.mkString(" "))
     val trees = parser.parseWithTrees(word)
     //println("Tree: "+ParseTreeUtils.parseTreetoString(trees(0)))
-    val res1 = !trees.isEmpty
+    val res1 = trees.isInstanceOf[Parsed[String]]
     res1 should be(true)
   }
 
@@ -101,25 +101,28 @@ X2 -> ')' | ')' S22"""
     //println("Parsing string: " + word.mkString(" "))
     val trees = parser.parseWithTrees(word)
     //println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
-    val res1 = !trees.isEmpty
+    val res1 = trees.isInstanceOf[Parsed[String]]
     res1 should be(true)
   }
-  
+
   "The CYKParsers" should " should be able to handle unit productions" in {
     val g = grammar"""E ::= F
     F ::= ID"""
     val parser = new CYKParser(g.twonfGrammar)
     val word = List(Terminal("ID"))
-    val trees = parser.parseWithTrees(word)
+    val fb = parser.parseWithTrees(word)
     //println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
     val res1 =
-      trees(0) match {
-        case PNode(Rule(Nonterminal('E), _), _) => true
-        case _                                   => false
-      }    
+      fb match {
+        case s: Parsed[String] =>
+          s.parseTrees(0) match {
+            case PNode(Rule(Nonterminal('E), _), _) => true
+            case _                                  => false
+          }
+      }
     res1 should be(true)
   }
-  
+
   "The CYKParsers" should " should be able to handle epsilon productions" in {
     val g = grammar"""E ::= G A
     G ::= A F
@@ -127,13 +130,45 @@ X2 -> ')' | ')' S22"""
     A ::= """""
     val parser = new CYKParser(g.twonfGrammar)
     val word = List(Terminal("ID"))
-    val trees = parser.parseWithTrees(word)
-//    /println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
+    val fb = parser.parseWithTrees(word)
+    //    /println("Tree: " + ParseTreeUtils.parseTreetoString(trees(0)))
     val res1 =
-      trees(0) match {
-        case PNode(Rule(Nonterminal('E), _), _) => true
-        case _                                   => false
-      }    
+      fb match {
+        case s: Parsed[String] =>
+          s.parseTrees(0) match {
+            case PNode(Rule(Nonterminal('E), _), _) => true
+            case _                                  => false
+          }
+      }
+    res1 should be(true)
+  }
+
+  // add tests for testing feedback
+  "LL(1) parser" should " should provide correct feedback on LL(1) Expression Grammar" in {
+    val g = grammar"""E -> V Suf
+				Suf -> '+' E | '*' E | ""
+				V -> '(' E ')' | ID"""
+    val word = "ID + ID ID * ( ID )".split(" ").map(tok => tok.trim()).toList
+    //println("Parsing string: "+word.mkString(" "))   
+    val err = ParseTreeUtils.parseWithTrees(g, word)
+    //println("Feedback: " + err)
+    val res1 = err match {
+      case err @ LL1Error(Nonterminal('Suf), Some(Terminal("ID"))) => true
+      case _ => false
+    }
+    res1 should be(true)
+  }
+
+  "CYK parser" should " should provide correct feedback on Expression Grammar" in {
+    val g = grammar"""E -> E '+' E | E '*' E | '(' E ')' | ID"""
+    val word = "ID + ID ID * ( ID )".split(" ").map(tok => tok.trim()).toList
+    println("Parsing string: "+word.mkString(" "))   
+    val err = ParseTreeUtils.parseWithTrees(g, word)
+    //println("Feedback: " + err)
+    val res1 = err match {
+      case err @ CYKError(fdb) => true
+      case _                        => false
+    }
     res1 should be(true)
   }
 }
