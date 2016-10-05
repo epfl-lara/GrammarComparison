@@ -15,17 +15,21 @@ class GlobalContext(
   val debugGNFConversion : Boolean = false,
   //stats and logs
   val enableStats: Boolean = false,
+  val enableLog: Boolean = false,
   val statsFilename: String = "cfg-checker.stats",
   val logFilename: String = "cfgchecker.log") {
 
   //enter static parameters here
   val stats = new grammar.utils.Stats(statsFilename)
-  val logStream = new PrintWriter(new FileOutputStream(new File(logFilename)))
+  val logStream = 
+    if (enableLog) 
+      new PrintWriter(new FileOutputStream(new File(logFilename)))
+    else null
 
   //enter any dynamic parameters here
   var abort = false
 
-  def logMessage(msg: String) {
+  def logMessage(msg: String) = if (enableLog) {
     logStream.println(msg)
     logStream.flush()
   }
