@@ -140,10 +140,10 @@ object ParseTreeUtils {
     val terms = s.map(Terminal[T] _)
     val parser =
       if (GrammarUtils.isLL1(g)) {
-        println("[Info] Using LL(1) Parsing Algorithm")
+        //println("[Info] Using LL(1) Parsing Algorithm")
         new LL1Parser(g)
       } else {
-        println("[Info] Using CYK Parsing Algorithm")
+        //println("[Info] Using CYK Parsing Algorithm")
         new CYKParser(g.cnfGrammar)
       }
     parser.parse(terms)
@@ -153,10 +153,10 @@ object ParseTreeUtils {
     val terms = s.map(Terminal[T] _)
     val parser =
       if (GrammarUtils.isLL1(g)) {
-        println("[Info] Using LL(1) Parsing Algorithm")
+        //println("[Info] Using LL(1) Parsing Algorithm")
         new LL1Parser(g)
       } else {
-        println("[Info] Using CYK Parsing Algorithm")
+        //println("[Info] Using CYK Parsing Algorithm")
         new CYKParser(g.twonfGrammar)
       }
     parser.parseWithTrees(terms) match {
