@@ -3,8 +3,9 @@ package grammar
 
 import org.scalatest.Matchers
 import org.scalatest.FlatSpec
-import CFGrammar._
+import grammar.CFGrammar._
 import EBNFGrammar._
+import grammarcomp.parsing._
 
 class GrammarTest extends FlatSpec with Matchers {
   import GrammarReaders._
