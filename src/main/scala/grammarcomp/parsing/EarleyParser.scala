@@ -244,45 +244,52 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
    * Computes the parsing table once again, with a few accelerations.
    */
   def update(w: List[Terminal[T]], i: Int, j: Int, k: Int)(implicit opctx: GlobalContext): Unit = {
-    if (i==w.length) {
-      return
-    }
-    val oldlength = length
-    val newLength = w.length + 1
-    input = w
-    length = newLength
-    val oldPT = parsingTable.map(identity)
-    
-    parsingTable = new Array[HashSet[EarleyItem[T]]](newLength)
-    //println(oldPT.length, parsingTable.length)
-    val offset = newLength - oldlength//k-j
-    //println("offset: "+ offset)
-    if (i>0) {
-      // Copy the old table up till the changes
-      for(n<-Range(0, i+1)) {parsingTable(n) = oldPT(n)}
-      
-      // Apply earley algorithm for the new stuff
-      for(n<-Range(i+1, newLength)) {parsingTable(n) = new HashSet()}
-      applyEarley(w, i, k+1)
-      
-      // If the parsing graph was computed, we can use it to further accelerate.
-      if (parseGraph.isDefined) {
-        applyEarleyWithCheck(w, oldPT, i, k, newLength-1, offset)
-      } else {
-        applyEarley(w, k, newLength-1)
+    try {
+      if (i==w.length) {
+        return
       }
-      // Flush cache
-      parseGraph = None
-      parsingTree = null
-      table = true
-    } else {
-      parseGraph = None
-      parsingTree = null
-      table = false
-      endItem = None
-      computeTable(w)
+      val oldlength = length
+      val newLength = w.length + 1
+      input = w
+      length = newLength
+      val oldPT = parsingTable.map(identity)
+      
+      parsingTable = new Array[HashSet[EarleyItem[T]]](newLength)
+      //println(oldPT.length, parsingTable.length)
+      val offset = newLength - oldlength//k-j
+      //println("offset: "+ offset)
+      if (i>0) {
+        // Copy the old table up till the changes
+        for(n<-Range(0, i+1)) {parsingTable(n) = oldPT(n)}
+        
+        // Apply earley algorithm for the new stuff
+        for(n<-Range(i+1, newLength)) {parsingTable(n) = new HashSet()}
+        applyEarley(w, i, k+1)
+        
+        // If the parsing graph was computed, we can use it to further accelerate.
+        if (parseGraph.isDefined) {
+          applyEarleyWithCheck(w, oldPT, i, k, newLength-1, offset)
+        } else {
+          applyEarley(w, k, newLength-1)
+        }
+        // Flush cache
+        parseGraph = None
+        parsingTree = null
+        table = true
+      } else {
+        parseGraph = None
+        parsingTree = null
+        table = false
+        endItem = None
+        computeTable(w)
+      }
+    } catch {
+    case e: Exception => 
+        println("something unexpected happened, execute regular parsing")
+        clear()
+        computeTable(w)
     }
-  }
+  } 
   
    /**
    * @param: w modified string
@@ -291,9 +298,16 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
    * Computes the difference between old string and w.
    */
   def update(w: List[Terminal[T]])(implicit opctx: GlobalContext): Unit = {
+    try {
     val (i, j) = getPrefixSuffix(input, w)
     val k = w.length - j
     update(w, i, input.length - j, if (k<i) i else k)
+    } catch {
+      case e: Exception => 
+        println("something unexpected happened, execute regular parsing")
+        clear()
+        computeTable(w)
+    }
   }
 
   /** In the parsing table, returns the last entry that is not empty
