@@ -7,6 +7,7 @@ import scala.annotation.tailrec
 import grammar.GrammarUtils
 import grammar.GlobalContext
 import ParseTreeUtils._
+import java.util.Calendar
 
 class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
   case class EndOfRule(r: Rule[T])
@@ -68,11 +69,22 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
         case _ => 
           LLFeedback(nt, l.headOption)
       }            
-      case (Left(_: Terminal[T]) :: q, a :: b)  => // here (t, a) are guaranteed to be identical
-        rec(q, b, PLeaf(a) :: acc)           
+      case (Left(t: Terminal[T]) :: q, a :: b) if (t.obj == a.obj) => 
+        // here (t, a) are guaranteed to be identical
+        rec(q, b, PLeaf(a) :: acc)
+      case (Left(t: Terminal[T]) :: q, a :: b) =>
+        // In case they are different
+        LLFailFeedback(t, a)
     }
     rec(Left(g.start) :: Nil, s, Nil)
   }   
 
-  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = parseWithFeedback(s) 
+  def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext) = {
+    opctx.stats.updateCounter(1, "LL1ParseTreeCalls")
+    var timer = Calendar.getInstance.getTimeInMillis
+    val res = parseWithFeedback(s) 
+    timer = Calendar.getInstance.getTimeInMillis - timer
+    opctx.stats.updateCounterTime(timer, "LL1ParseTime", "LL1ParseTreeCalls")
+    res
+  }
 }

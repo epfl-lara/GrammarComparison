@@ -16,6 +16,8 @@ trait InternalFeedback[T]
 class Parsed[T](val parseTrees: Stream[ParseTree[T]]) extends InternalFeedback[T]
 case class CYKFeedback[T](cyktable: List[(Int, Int, Set[Nonterminal])]) extends InternalFeedback[T]
 case class LLFeedback[T](nt: Nonterminal, char: Option[Terminal[T]]) extends InternalFeedback[T]
+case class LLFailFeedback[T](found: Terminal[T], expected: Terminal[T]) extends InternalFeedback[T]
+case class EarleyFeedback[T](index: Int, char: List[Terminal[T]]) extends InternalFeedback[T]
 
 trait Parser[T] {
   def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean
@@ -93,6 +95,17 @@ case class LL1Error[T](nt: Nonterminal, char: Option[Terminal[T]]) extends Parse
     }
   }
 }
+case class LL1FailError[T](t: Terminal[T], e: Terminal[T]) extends ParseFeedback[T] {
+  override def toString = {
+    s"Encountered $t, expected $e"
+  }
+}
+case class EarleyError[T](val index: Int, char: List[Terminal[T]]) extends ParseFeedback[T] {
+  override def toString = {
+      s"Couldn't continue parsing at $index. Suggested inputs to continue:\n" + char.toString()
+  }
+}
+
 
 object ParseTreeUtils {
 
@@ -163,6 +176,7 @@ object ParseTreeUtils {
       case p: Parsed[T]          => new Success(p.parseTrees.map(t => ParseTreeDSL.mapTree(t)))
       case CYKFeedback(fdb) => CYKError(fdb)
       case LLFeedback(nt, char)  => LL1Error(nt, char)
+      case LLFailFeedback(t, e) => LL1FailError(t, e)
     }
   }
 }

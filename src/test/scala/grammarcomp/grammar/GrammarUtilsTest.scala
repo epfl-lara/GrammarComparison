@@ -4,7 +4,7 @@ package grammar
 import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 import CFGrammar._
-import parsing._
+import grammarcomp.parsing._
 
 class GrammarUtilsTest extends FlatSpec with Matchers {
   import GrammarReaders._
