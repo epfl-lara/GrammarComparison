@@ -73,6 +73,7 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
         // here (t, a) are guaranteed to be identical
         rec(q, b, PLeaf(a) :: acc)
       case (Left(t: Terminal[T]) :: q, a :: b) =>
+        // In case they are different
         LLFailFeedback(t, a)
     }
     rec(Left(g.start) :: Nil, s, Nil)
