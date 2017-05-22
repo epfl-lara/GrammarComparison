@@ -284,7 +284,11 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         computeTable(w)
       }
     } catch {
-    case e: Exception => 
+    case e: java.lang.ArrayIndexOutOfBoundsException => 
+        println("something unexpected happened, execute regular parsing")
+        clear()
+        computeTable(w)
+    case e: java.util.NoSuchElementException =>
         println("something unexpected happened, execute regular parsing")
         clear()
         computeTable(w)
@@ -298,16 +302,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
    * Computes the difference between old string and w.
    */
   def update(w: List[Terminal[T]])(implicit opctx: GlobalContext): Unit = {
-    try {
     val (i, j) = getPrefixSuffix(input, w)
     val k = w.length - j
     update(w, i, input.length - j, if (k<i) i else k)
-    } catch {
-      case e: Exception => 
-        println("something unexpected happened, execute regular parsing")
-        clear()
-        computeTable(w)
-    }
   }
 
   /** In the parsing table, returns the last entry that is not empty
