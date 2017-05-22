@@ -70,8 +70,8 @@ case class EarleyItem[T](rule: Rule[T],
 }
 
 case class TempTree[T](rule: Rule[T],
-                         parent: TempTree[T], 
-                         term: Option[Terminal[T]] = None){
+                       parent: TempTree[T], 
+                       term: Option[Terminal[T]] = None){
     var children: List[TempTree[T]] = List()
     
     override def toString() = {
@@ -88,10 +88,23 @@ case class TempTree[T](rule: Rule[T],
     }
   }
 
+/**
+ * How to use:
+ * - Create an instance of EarleyParser with the grammar.
+ * - On calling parse, the parsing table is computed and cached, but no tree is.
+ * - On calling parseWithTree(s), if the parsing table in not in cache, compute it, then compute the tree and cache it.
+ * 
+ * If you want to parse another input without incremental, you have to clear the cache beforehand by calling clear()
+ * When calling update only with the list of terminals, it will compute automatically the difference between the last input and the new list.
+ * If the difference is known beforehand, call update with the following parameters:
+ * - the list of terminals,
+ * - the index where the difference begins,
+ * - the index where the difference ends in the original string,
+ * - the index where the difference ends in the new string.
+ */
 class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
   //require(isIn2NF(G, false))
   
-  private var enable_cache = false
   private def getRules: List[Rule[T]] = G.rules
   private val axiom = G.start
   
@@ -105,10 +118,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
   private var parsingTree: TempTree[T] = null
   private var parseGraph: Option[List[(EarleyItem[T], Edge)]]= None;
   
-  def setCache(enable: Boolean = true): Unit = {
-    enable_cache = true
-  }
-  
   /**
    * Flush the cache
    */
@@ -121,6 +130,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     parseGraph = None
   }
   
+  /**
+   * a simple way to print it. Looks horrible.
+   */
   override def toString(): String = {
     var str = ""
     parsingTable.foreach{x => {
@@ -131,7 +143,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     "[" + str + "]"
   }
   
-  def isParsable(w: List[Terminal[T]]): Boolean = {
+  private def isParsable(w: List[Terminal[T]]): Boolean = {
     parsingTable(w.length).exists { item => 
           (item.rule.leftSide equals axiom) &&
           (item.start == 0) &&
@@ -145,6 +157,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     }
   }
   
+  /**
+   * return true if w is parsable, returns false otherwise.
+   */
   def parse(w: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean = {
     opctx.stats.updateCounter(1, "EarleyParseCalls")
     var timer = Calendar.getInstance.getTimeInMillis
@@ -157,6 +172,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     isParsable(w)
   }
   
+  /**
+   * returns some parse tree if s is parsable, returns None otherwise
+   */
   def parseWithTree(s: List[Terminal[T]])(implicit opctx: GlobalContext): Option[ParseTree[T]] = {
     opctx.stats.updateCounter(1, "EarleyParseTreeCalls")
     var timer = Calendar.getInstance.getTimeInMillis
@@ -172,7 +190,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       return None
     }
     val L = parseGraph.getOrElse(graphParcour())
-    //println(L)
     val (item, edge) = L.head
     val tree = 
     if (item.rule.rightSide.length==1 && (edge==Scan)) {
@@ -184,7 +201,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     else {
       val tt = constructTree(L, new TempTree[T](item.rule, null), 0)
       parsingTree = tt
-      //println(ParseTreeDSL.mapTree(tt))
       Some(tt.toPTree())
     }
     timer = Calendar.getInstance.getTimeInMillis - timer
@@ -192,6 +208,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     tree
   }
   
+  /**
+   * Returns a feedback on the parsing of s
+   */
   def parseWithTrees(s: List[Terminal[T]])(implicit opctx: GlobalContext): InternalFeedback[T] = {
     opctx.stats.updateCounter(1, "EarleyParseTreeCalls")
     var timer = Calendar.getInstance.getTimeInMillis
@@ -215,19 +234,15 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       return EarleyFeedback(index, L.toList)
     }
     val L = parseGraph.getOrElse(graphParcour())
-    //println(L)
     val (item, edge) = L.head
     val tree = 
     if (item.rule.rightSide.length==1 && (edge==Scan)) {
       parsingTree = new TempTree(item.rule, null, Some(item.rule.rightSide.head.asInstanceOf[Terminal[T]]))
-      //parsingTree.start = 0
-      //parsingTree.end = 0
       new PLeaf(item.rule.rightSide.head.asInstanceOf[Terminal[T]])
     }
     else {
       val tt = constructTree(L, new TempTree[T](item.rule, null), 0)
       parsingTree = tt
-      //println(ParseTreeDSL.mapTree(tt))
       tt.toPTree
     }
     timer = Calendar.getInstance.getTimeInMillis - timer
@@ -255,9 +270,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       val oldPT = parsingTable.map(identity)
       
       parsingTable = new Array[HashSet[EarleyItem[T]]](newLength)
-      //println(oldPT.length, parsingTable.length)
       val offset = newLength - oldlength//k-j
-      //println("offset: "+ offset)
       if (i>0) {
         // Copy the old table up till the changes
         for(n<-Range(0, i+1)) {parsingTable(n) = oldPT(n)}
@@ -384,13 +397,11 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
                                    tt: TempTree[T],
                                    index: Int): TempTree[T] = {
     if (L.isEmpty) { // Shouldn't be encountered
-      //tt.end = index
       return tt
     }
     val (item, edge) = L.head
     val tail = L.tail
     if (edge==null) {
-      //tt.end=index
       return tt
     }
     edge match {
@@ -399,8 +410,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         val ttscan =(new TempTree(item.rule,
                      tt,
                      Some(item.rule.rightSide.drop(item.point).head.asInstanceOf[Terminal[T]])))
-        //ttscan.start = index
-        //ttscan.end = index
         tt.children = 
           ttscan::tt.children
         constructTree(tail, tt, index+1)
@@ -413,7 +422,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         constructTree(tail, ttpredict, index)
       // Complete should go back to filling its parent.
       case Complete =>
-        //tt.end = index
         constructTree(tail, tt.parent, index)
     }
   }
@@ -472,7 +480,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         return index
       }
       for(item <- parsingTable(index)) {
-        discriminator(Some(term), item, index)(true)
+        discriminator(Some(term), item, index)
       }
       for(item <- parsingTable(index)) {
         if (item.start<=i) {
@@ -542,17 +550,14 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
           earleyItem.parent = item
             if (parsingTable(0).add(earleyItem)) { 
               zeroPredictor(earleyItem)
-            } /*else {
-              parsingTable(0).update(earleyItem, true)
-            }*/
+            } 
         }
       }
       case _ =>
     }
   }
   
-  private def discriminator(term: Option[Terminal[T]], item: EarleyItem[T], index: Int)
-  (implicit check: Boolean = false): Unit = {
+  private def discriminator(term: Option[Terminal[T]], item: EarleyItem[T], index: Int): Unit = {
     val restOfRule = item.rule.rightSide drop item.point
     restOfRule match {
       /* If an item is of the form (A -> _ . w _, i), where w is the read terminal,
@@ -583,8 +588,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     }
   }
   
-  private def scanner(item: EarleyItem[T], index: Int)
-  (implicit check: Boolean): Unit = {
+  private def scanner(item: EarleyItem[T], index: Int): Unit = {
     if (index<length) {
       val earleyItem = new EarleyItem(item.rule, item.point+1, item.start, Scan)
       earleyItem.parent = item
@@ -592,8 +596,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     }
   }
   
-  private def predictor(nt: Nonterminal, item: EarleyItem[T], index: Int, term: Option[Terminal[T]])
-  (implicit check: Boolean): Unit = {
+  private def predictor(nt: Nonterminal, item: EarleyItem[T], index: Int, term: Option[Terminal[T]]): Unit = {
     getRules.foreach { grammarRule =>  
         if (grammarRule.leftSide == (nt)) {
           val earleyItem = new EarleyItem(grammarRule, 0, index, Predict)
@@ -613,8 +616,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
      }
    }
   
-  private def completor(item: EarleyItem[T], index: Int, term: Option[Terminal[T]])
-  (implicit check: Boolean): Unit = {
+  private def completor(item: EarleyItem[T], index: Int, term: Option[Terminal[T]]): Unit = {
     val A = item.rule.leftSide
     for(to_advance <- parsingTable(item.start)) {
       to_advance.rule.rightSide drop to_advance.point match {
@@ -627,9 +629,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
           earleyItem.predicted_by = item.predicted_by
           if(parsingTable(index).add(earleyItem)) {
             discriminator(term, earleyItem, index)
-          } /*else {
-            parsingTable(index).update(earleyItem, true)
-          }*/
+          } 
         case _ =>
       }
     }
