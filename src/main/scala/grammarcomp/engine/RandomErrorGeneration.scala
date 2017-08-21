@@ -21,7 +21,6 @@ import scala.collection.mutable.ListBuffer
 import benchmarks._
 import AmbiguityChecker._
 import scala.concurrent.duration._
-import scala.concurrent.util._
 import java.util.concurrent._
 
 class RandomErrorGeneration(g: Grammar[String], seed: Long) {
