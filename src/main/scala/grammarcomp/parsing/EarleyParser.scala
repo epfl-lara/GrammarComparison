@@ -33,8 +33,8 @@ case class EarleyItem[T](rule: Rule[T],
                          point: Int, 
                          start: Int,
                          edge: Edge) {
-  var parent: EarleyItem[T] = null
-  var predicted_by: HashSet[EarleyItem[T]] = new HashSet();
+  var parent: HashSet[EarleyItem[T]] = new HashSet;
+  //var predicted_by: HashSet[EarleyItem[T]] = new HashSet();
   var seen = false
   
   override def toString() = {
@@ -50,7 +50,7 @@ case class EarleyItem[T](rule: Rule[T],
   }
   override def hashCode() = {
     val ruleHash = rule.hashCode()
-    (ruleHash + point * 31 + start * 41)
+    (ruleHash + point * 1061 + start * 1789)
   }
   override def equals(other: Any) = {
     other match {
@@ -87,6 +87,72 @@ case class TempTree[T](rule: Rule[T],
       }
     }
   }
+
+class HashEarley[U] {
+  var size = 8
+  var buckets: Array[List[EarleyItem[U]]] = 
+    Array(Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil)
+  
+  private var contained = 0
+  
+  def maintain() = {
+    if (2*contained>3*size) {
+      size = size * 2
+      val old = buckets
+      //var newBucks: Array[List[EarleyItem[U]]] = new Array(size)
+      buckets = new Array(size)
+      old.foreach { x => x.foreach { y => simpleAdd(y) } }
+    }
+  }
+  
+  def add(elem: EarleyItem[U]) = {
+    val bucket = buckets(elem.hashCode() % size)
+    val (list, b) = addWithoutDouble(bucket, elem)
+    if (b) {
+      buckets(elem.hashCode() % size) = list
+      contained += 1
+      maintain()
+    }
+    b
+  }
+  
+  def get(elem: EarleyItem[U]) = {
+    val bucket = buckets(elem.hashCode() % size)
+    bucket.find { x => x equals elem }
+  }
+  
+  def getUnseen(): Option[EarleyItem[U]] = {
+    for (bucket <- buckets;
+         x <- bucket) {
+      if (!x.seen) {return Some(x)}
+    }
+    return None
+  }
+  
+  def getUnseenAndComplete(to_complete: EarleyItem[U]): Option[EarleyItem[U]] = {
+    for (bucket <- buckets;
+         x <- bucket) {
+      if ((!x.seen)&&(x.isComplete(to_complete))) {return Some(x)}
+    }
+    return None
+  }
+  
+  private def addWithoutDouble(L: List[EarleyItem[U]], elem: EarleyItem[U]) = {
+    @tailrec def aux(List: List[EarleyItem[U]], acc: List[EarleyItem[U]], elem: EarleyItem[U]): (List[EarleyItem[U]], Boolean) = {
+      List match {
+        case Nil => (elem::acc, true)
+        case t::q if t equals elem => (L, false)
+        case t::q => aux(q, t::acc, elem)
+      }
+    }
+    aux(L, Nil, elem)
+  }
+  
+  private def simpleAdd(elem: EarleyItem[U]) = {
+    val bucket = buckets(elem.hashCode() % size)
+    buckets(elem.hashCode() % size) = elem::bucket
+  }
+}
 
 /**
  * How to use:
@@ -199,7 +265,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       Some(new PLeaf(item.rule.rightSide.head.asInstanceOf[Terminal[T]]))
     }
     else {
-      val tt = constructTree(L, new TempTree[T](item.rule, null), 0)
+      val tt = constructTree(L, new TempTree[T](item.rule, null), 0, s)
       parsingTree = tt
       Some(tt.toPTree())
     }
@@ -241,7 +307,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       new PLeaf(item.rule.rightSide.head.asInstanceOf[Terminal[T]])
     }
     else {
-      val tt = constructTree(L, new TempTree[T](item.rule, null), 0)
+      val tt = constructTree(L, new TempTree[T](item.rule, null), 0, s)
       parsingTree = tt
       tt.toPTree
     }
@@ -267,6 +333,8 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       val newLength = w.length + 1
       input = w
       length = newLength
+      // Copy and unsee everything...?
+      unsee()
       val oldPT = parsingTable.map(identity)
       
       parsingTable = new Array[HashSet[EarleyItem[T]]](newLength)
@@ -340,10 +408,107 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     if (endItem.isEmpty) {
       return null
     }
-    parseGraph = Some(gpAux(endItem.get, List(), null, List()))
+    //parseGraph = Some(gpAux(endItem.get, List(), null, List()))
+    parseGraph = Some(gpTry(endItem.get, null, List(), List(), List()))
     return parseGraph.get
   }
   
+  private def backtrack(prec: EarleyItem[T], 
+                        L: List[(EarleyItem[T], Edge)], 
+                        to_complete: List[EarleyItem[T]], 
+                        predicted: List[EarleyItem[T]],
+                        curr: EarleyItem[T] = null): List[(EarleyItem[T], Edge)] = {
+    println("TOOK A BACKTRACK?")
+    println
+    println(prec.parent)
+    println
+    println(to_complete)
+    println
+    println(curr)
+    println
+    println(curr.parent)
+    return List()
+    val (grandParent, _) = L.head
+    prec.edge match {
+      case Scan =>
+        gpTry(prec, grandParent, L.tail, to_complete, predicted)
+      case Complete =>
+        gpTry(prec, grandParent, L.tail, to_complete.tail, predicted)
+      case Predict =>
+        gpTry(prec, grandParent, L.tail, predicted.head::to_complete, predicted.tail)
+    }
+  }
+  
+  @tailrec private def gpTry(curr: EarleyItem[T],
+                             prec: EarleyItem[T],
+                             L: List[(EarleyItem[T], Edge)],
+                             to_complete: List[EarleyItem[T]],
+                             predicted: List[EarleyItem[T]]): List[(EarleyItem[T], Edge)] = {
+    if (curr.parent.isEmpty) {
+      curr.seen = true
+      val outEdge = (if (prec==null) null else prec.edge)
+      (curr, outEdge)::L
+    } else {
+      curr.edge match { // Ingoing edge
+        case Complete => 
+          // TODO: Seen
+          val par = curr.parent.find { x => !x.seen }
+          par match {
+            case None =>
+              if (prec==null) {List()}
+              else {
+                backtrack(prec, L, to_complete, predicted)
+              }
+            case Some(item) =>
+              curr.seen = true
+              val outEdge = (if (prec==null) null else prec.edge)
+              gpTry(item, curr, (curr, outEdge)::L, curr::to_complete, predicted)
+          }
+          
+        case Predict =>
+          // TODO: Seen
+          if (to_complete.isEmpty) {
+            curr.seen = true
+            val outEdge = (if (prec==null) null else prec.edge)
+            (curr, outEdge)::L
+          }
+          else {
+            val to_predict = to_complete.head
+            val predicted_parent =
+              curr.parent.find { x => (!x.seen)&&(x.isComplete(to_predict))}
+            predicted_parent match {
+              case None =>
+                if (prec==null) {List()}
+                else {
+                  backtrack(prec, L, to_complete, predicted, curr)
+                }
+              case Some(item) =>
+                curr.seen = true
+                val outEdge = (if (prec==null) null else prec.edge)
+                gpTry(item, curr, (curr, outEdge)::L, to_complete.tail, to_predict::predicted)
+            }
+          }
+          
+        case Scan => 
+          // TODO: Seen
+          val par = curr.parent.find { x => !x.seen }
+          par match {
+            case None =>
+              if (prec==null) {List()}
+              else {
+                backtrack(prec, L, to_complete, predicted)
+              }
+            case Some(item) =>
+              curr.seen = true
+              val outEdge = (if (prec==null) null else prec.edge)
+              gpTry(item, curr, (curr, outEdge)::L, to_complete, predicted)
+          }
+        case _ => //Should not happen
+          println("Match Error in gpTry")
+          List()
+      }
+    }
+  }
   
   /** Not so simple graph parcour, goes up the parents.
    *  Performs a little trick when seeing a complete edge:
@@ -354,11 +519,17 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
                              edge: Edge,
                              to_complete: List[EarleyItem[T]]): List[(EarleyItem[T], Edge)] = {
     
-    if (ei!=null) {ei.seen=true}
+    //if (ei!=null) {ei.seen=true}
     if ((ei==null)&&(!to_complete.isEmpty)) {
       var final_L = L
-      to_complete.foreach { item => final_L = 
-              (new EarleyItem(item.rule, item.point-1, item.start, Predict), Predict)::final_L }
+      var par: EarleyItem[T] = null
+      to_complete.foreach { item => final_L = {
+                val newEi = new EarleyItem(item.rule, item.point-1, item.start, Predict)
+                newEi.parent = HashSet(par)
+                par = newEi
+                (newEi, Predict)::final_L 
+              }
+            }
       return final_L
     } 
     else if (ei==null) {
@@ -367,23 +538,38 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     else {
       edge match {
         case Complete =>
-          gpAux(ei.parent, (ei, edge)::L, ei.edge, L.head._1::to_complete)
+          val par = ei.parent.find { x => !x.seen }
+          par match {
+            case None => 
+              if (L.isEmpty) {
+                return List()
+              }
+              val outEdge = L.head._1.edge
+              gpAux(L.head._1, L.tail, outEdge, if (outEdge==Complete) to_complete.tail else to_complete)
+            case Some(item) => 
+              ei.seen = true
+              gpAux(item, (ei, edge)::L, ei.edge, L.head._1::to_complete)
+          }
+          //gpAux(ei.parent, (ei, edge)::L, ei.edge, L.head._1::to_complete)
         case Predict =>
           val (prec, _) = L.head
-          if (to_complete.isEmpty) {
-                println(ei, edge)
-                println(ei.parent, ei.edge)
-                println(L)
-          }
+          /*if (to_complete.isEmpty) {
+            println(ei, edge)
+            println(ei.parent, ei.edge)
+            println(L)
+          }*/
           val item = to_complete.head
-          val valid = 
-            if (prec.predicted_by.size==1) {
-              Some(prec.predicted_by.head)
+          var valid = // Should ALWAYS be found
+            if (prec.parent.size==1) {
+              Some(prec.parent.head)
             } else {
-              prec.predicted_by.find { x => x.isComplete(item)}
+              prec.parent.find { x => x.isComplete(item)}
             }
-          gpAux(valid.get.parent, (valid.get, edge)::L, valid.get.edge, to_complete.tail)
-        case _ => gpAux(ei.parent, (ei, edge)::L, ei.edge, to_complete)
+          if (valid.isEmpty) {
+            //println(to_complete)
+          }
+          gpAux(valid.get.parent.head, (valid.get, edge)::L, valid.get.edge, to_complete.tail)
+        case _ => gpAux(ei.parent.head, (ei, edge)::L, ei.edge, to_complete)
       }
     }
   }
@@ -395,7 +581,8 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
    */
   @tailrec private final def constructTree(L: List[(EarleyItem[T], Edge)],
                                    tt: TempTree[T],
-                                   index: Int): TempTree[T] = {
+                                   index: Int,
+                                   w: List[Terminal[T]]): TempTree[T] = {
     if (L.isEmpty) { // Shouldn't be encountered
       return tt
     }
@@ -409,20 +596,21 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       case Scan => 
         val ttscan =(new TempTree(item.rule,
                      tt,
-                     Some(item.rule.rightSide.drop(item.point).head.asInstanceOf[Terminal[T]])))
+                     Some(w.head)))
+                     //Some(item.rule.rightSide.drop(item.point).head.asInstanceOf[Terminal[T]])))
         tt.children = 
           ttscan::tt.children
-        constructTree(tail, tt, index+1)
+        constructTree(tail, tt, index+1, w.tail)
       // Predict should produce a new child, and recursively fill its own children.
       case Predict =>
         val (i1, e1) = tail.head
         val ttpredict = (new TempTree(i1.rule, tt))
         //ttpredict.start = i1.start
         tt.children = ttpredict::tt.children
-        constructTree(tail, ttpredict, index)
+        constructTree(tail, ttpredict, index, w)
       // Complete should go back to filling its parent.
       case Complete =>
-        constructTree(tail, tt.parent, index)
+        constructTree(tail, tt.parent, index, w)
     }
   }
   
@@ -439,7 +627,8 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     // Set up T[0]
     for (rule <- getRules) {
       if (rule.leftSide == axiom) {
-        parsingTable(0).add(new EarleyItem(rule, 0, 0, null)) 
+        //parsingTable(0).add(new EarleyItem(rule, 0, 0, null)) 
+        parsingTable(0).add(new EarleyItem(rule, 0, 0, Predict)) 
       }
     }
     for (item <- parsingTable(0)) {
@@ -505,25 +694,28 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
               if (item.point==item.rule.rightSide.length) {
                 // Make sure to set a new parent for the corresponding item.
                 val newEI = new EarleyItem(ei.rule, ei.point, ei.start, Complete)
-                ei.parent = item
-                ei.predicted_by = item.predicted_by
+                ei.parent = HashSet(item)
+                //ei.predicted_by = item.predicted_by
               }
               else {
                 val newEI = new EarleyItem(ei.rule, ei.point, ei.start, Predict)
-                ei.parent = item
-                ei.predicted_by = HashSet(item)
+                ei.parent = HashSet(item)
+                //ei.predicted_by = HashSet(item)
               }
             }
             var par = item
             tail.foreach({case (ei, edge) => 
-              ei.parent = par
-              ei.edge match {
+              ei.seen = false
+              ei.parent = HashSet(par)
+              /**ei.edge match {
                 // Black magic happening?
                 case Predict =>
                   ei.predicted_by = HashSet(par)
-                case _ => ei.predicted_by = par.predicted_by
-              }
-              try {parsingTable(item_index).add(ei)} catch {case e: Exception => println(ei)}
+                case _ => 
+                  ei.predicted_by = par.predicted_by
+              }**/
+              //parsingTable(item_index).add(ei)
+              updateSet(parsingTable(item_index), ei)
               if (edge==Scan) {item_index+=1}
               par = ei
             })
@@ -537,7 +729,13 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     }
     return j-1
   }
-    
+  
+  private def updateSet[U](set: HashSet[U], elem: U): Unit = {
+    if (!set.add(elem)) {
+      set remove elem
+      set add elem
+    }
+  }
     
   // A step for setting up T[0]
   private def zeroPredictor(item: EarleyItem[T]): Unit = {
@@ -547,10 +745,18 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         getRules.foreach { grammarRule =>
         if (grammarRule.leftSide == (nt)) {
           val earleyItem = new EarleyItem(grammarRule, 0, 0, Predict)
-          earleyItem.parent = item
-            if (parsingTable(0).add(earleyItem)) { 
+          earleyItem.parent = HashSet(item)
+            /*if (parsingTable(0).add(earleyItem)) { 
               zeroPredictor(earleyItem)
-            } 
+            }*/
+          val test = parsingTable(0).find(x => x equals earleyItem)
+          if (test.isDefined) {
+            test.get.parent.add(item)
+          } else {
+            //earleyItem.predicted_by = HashSet(item)
+            parsingTable(0).add(earleyItem)
+            zeroPredictor(earleyItem)
+          }
         }
       }
       case _ =>
@@ -591,7 +797,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
   private def scanner(item: EarleyItem[T], index: Int): Unit = {
     if (index<length) {
       val earleyItem = new EarleyItem(item.rule, item.point+1, item.start, Scan)
-      earleyItem.parent = item
+      earleyItem.parent = HashSet(item)
       parsingTable(index+1).add(earleyItem)
     }
   }
@@ -601,14 +807,14 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
         if (grammarRule.leftSide == (nt)) {
           val earleyItem = new EarleyItem(grammarRule, 0, index, Predict)
           val test = parsingTable(index).find(x => x equals earleyItem)
-          earleyItem.parent = item
+          earleyItem.parent = HashSet(item)
           /*if (parsingTable(index).add(earleyItem)) {
             discriminator(term, earleyItem, index)
           }*/
           if (test.isDefined) {
-            test.get.predicted_by.add(item)
+            test.get.parent.add(item)
           } else {
-            earleyItem.predicted_by = HashSet(item)
+            //earleyItem.predicted_by = HashSet(item)
             parsingTable(index).add(earleyItem)
             discriminator(term, earleyItem, index)
           }
@@ -625,11 +831,19 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
                                           to_advance.point + 1, 
                                           to_advance.start,
                                           Complete)
-          earleyItem.parent = item
-          earleyItem.predicted_by = item.predicted_by
-          if(parsingTable(index).add(earleyItem)) {
+          earleyItem.parent = HashSet(item)
+          val test = parsingTable(index).find(x => x equals earleyItem)
+          if (test.isDefined) {
+            test.get.parent.add(item)
+          } else {
+            //earleyItem.predicted_by = HashSet(item)
+            parsingTable(index).add(earleyItem)
             discriminator(term, earleyItem, index)
-          } 
+          }
+          //earleyItem.predicted_by = item.predicted_by
+          /*if(parsingTable(index).add(earleyItem)) {
+            discriminator(term, earleyItem, index)
+          } */
         case _ =>
       }
     }
@@ -653,4 +867,10 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     val j = suffixIndexReverse(L1, L2)
     (i, j)
   }
+  
+  private def unsee(): Unit = {
+    parsingTable.foreach { x => x.foreach { y => y.seen=false } }
+  }
+  
+  def getParseGraph = parseGraph.getOrElse(graphParcour)
 }

@@ -72,6 +72,28 @@ class EarleyParserTest extends FlatSpec with Matchers {
 
     val parser = new EarleyParser(grammar)
     println(ParseTreeDSL.mapTree(parser.parseWithTree(s1).get))
+    println(parser.getParseGraph)
     parser.parse(s1) should be(true)
+  }
+  
+  "The EarleyParsers" should "parse the example grammar" in {
+    val grammar =
+      grammar"""S -> E
+                E -> E p E
+                E -> E m E
+                E -> a"""
+    val s1 = ("a p a p a".split(" ") map Terminal.apply _).toList
+
+    val S = Nonterminal("S")
+    val E = Nonterminal("E")
+    val a = Terminal("a")
+    val p = Terminal("p")
+    val m = Terminal("m")
+
+    val parser = new EarleyParser(grammar)
+    val res1 = parser.parse(s1)
+    println(parser.toString())
+    println(parser.getParseGraph)
+    res1 should be(true)
   }
 }
