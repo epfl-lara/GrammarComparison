@@ -55,3 +55,5 @@ export := {
   IO.copy(files, true)
 }
 
+assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
+
