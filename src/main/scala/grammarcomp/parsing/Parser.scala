@@ -15,7 +15,8 @@ import scala.collection.immutable.Range
 trait InternalFeedback[T]
 class Parsed[T](val parseTrees: Stream[ParseTree[T]]) extends InternalFeedback[T]
 case class CYKFeedback[T](cyktable: List[(Int, Int, Set[Nonterminal])]) extends InternalFeedback[T]
-case class LLFeedback[T](nt: Nonterminal, char: Option[Terminal[T]]) extends InternalFeedback[T]
+case class LLNtFeedback[T](nt: Nonterminal, char: Option[Terminal[T]]) extends InternalFeedback[T]
+case class LLTTFeedback[T](expected: Terminal[T], found: Terminal[T]) extends InternalFeedback[T]
 
 trait Parser[T] {
   def parse(s: List[Terminal[T]])(implicit opctx: GlobalContext): Boolean
@@ -85,11 +86,12 @@ case class CYKError[T](cykTable: List[(Int, Int, Set[Nonterminal])]) extends Par
         case (i, j, nts) if !nts.isEmpty => s"d($i,$j) = { ${nts.mkString(",")} }"
       }.mkString("\n")
 }
-case class LL1Error[T](nt: Nonterminal, char: Option[Terminal[T]]) extends ParseFeedback[T] {
+case class LL1Error[T](sym: Symbol[T], char: Option[Terminal[T]]) extends ParseFeedback[T] {
   override def toString = {
-    char match {
-      case Some(c) => s"No production of $nt applies to character: $c"
-      case None    => s"No production of $nt applies to epsilon (End-of-stream)"
+    (sym, char) match {
+      case (nt: Nonterminal, Some(c)) => s"No production of $nt applies to character: $c"
+      case (nt: Nonterminal, None   ) => s"No production of $nt applies to epsilon (End-of-stream)"
+      case (t : Terminal[T], Some(c)) => s"Expected: $t, found: $c"
     }
   }
 }
@@ -160,9 +162,10 @@ object ParseTreeUtils {
         new CYKParser(g.twonfGrammar)
       }
     parser.parseWithTrees(terms) match {
-      case p: Parsed[T]          => new Success(p.parseTrees.map(t => ParseTreeDSL.mapTree(t)))
-      case CYKFeedback(fdb) => CYKError(fdb)
-      case LLFeedback(nt, char)  => LL1Error(nt, char)
+      case p: Parsed[T]           => new Success(p.parseTrees.map(t => ParseTreeDSL.mapTree(t)))
+      case CYKFeedback(fdb)       => CYKError(fdb)
+      case LLNtFeedback(nt, char) => LL1Error(nt, char)
+      case LLTTFeedback(expected, found) => LL1Error(expected, Some(found))
     }
   }
 }

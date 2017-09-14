@@ -66,10 +66,13 @@ class LL1Parser[T](g: Grammar[T]) extends Parser[T] {
         case Some(rule) =>
           rec(rule.rightSide.map(Left.apply) ++ List(Right(EndOfRule(rule))) ++ q, s, acc)
         case _ => 
-          LLFeedback(nt, l.headOption)
+          LLNtFeedback(nt, l.headOption)
       }            
-      case (Left(_: Terminal[T]) :: q, a :: b)  => // here (t, a) are guaranteed to be identical
-        rec(q, b, PLeaf(a) :: acc)           
+      case (Left(t: Terminal[T]) :: q, a :: b) =>
+        if (new TerminalWrapper(t) == new TerminalWrapper(a))
+          rec(q, b, PLeaf(a) :: acc)
+        else 
+          LLTTFeedback(t, a)
     }
     rec(Left(g.start) :: Nil, s, Nil)
   }   
