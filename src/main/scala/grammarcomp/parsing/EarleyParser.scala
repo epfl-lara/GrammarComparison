@@ -510,6 +510,8 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     return parseGraph.get
   }
   
+  
+  // TODO: Try with remembering the items one saw !!!
   private def backtrack(prec: EarleyItem[T], 
                         L: List[(EarleyItem[T], Edge)], 
                         to_complete: List[EarleyItem[T]], 
@@ -522,7 +524,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
     println
     println("seen_by: "+ prec.seen_by)
     println
-    println("L: " + L)
+    println("L: " + L.tail)
     println
     println("predicted: " + predicted)
     println
@@ -536,7 +538,7 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
       case Complete =>
         gpTry(prec, grandParent, L.tail, to_complete.tail, predicted, true)
       case Predict =>
-        gpTry(prec, grandParent, L.tail, predicted.head::to_complete, predicted.tail, true)
+        gpTry(prec, grandParent, L.tail, (predicted.head)::to_complete, predicted.tail, true)
     }
   }
   
@@ -546,12 +548,9 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
                              to_complete: List[EarleyItem[T]],
                              predicted: List[EarleyItem[T]],
                              want_unseen: Boolean = false): List[(EarleyItem[T], Edge)] = {
-    if (curr equals prec) {
-      println("what the fuck?")
-      println(curr)
-      println(curr.seen_by)
-      println(to_complete)
-    }
+    /*if (curr equals prec) {
+      
+    }*/
     if (prec!=null) {
       curr.seen_by.add(prec)
     }
@@ -597,7 +596,6 @@ class EarleyParser[T](G: Grammar[T]) extends Parser[T] {
             val to_predict = to_complete.head
             val predicted_parent =
               if(want_unseen) {
-                println(curr, prec)
                 curr.parent.getUnseenAndComplete(to_predict, curr)
               } else {
                 curr.parent.getComplete(to_predict)
