@@ -112,7 +112,7 @@ class EarleyParserTest extends FlatSpec with Matchers {
 
     val parser = new EarleyParser(grammar)
     val res1 = parser.parseWithTrees(s1)
-    println(parser.getParseGraph)
+    //println(parser.getParseGraph)
     //println(parser.toString())
     //println(parser.getParseGraph)
     res1 match {
